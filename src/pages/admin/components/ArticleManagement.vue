@@ -187,31 +187,63 @@
             <view class="action-buttons">
               <!-- 待审核状态可审核通过 -->
               <button 
-                v-if="currentArticle.status === '2'"
+                v-if="String(currentArticle.status) === '2'"
                 class="action-btn btn-primary" 
                 @click="approveArticleFromPreview"
-              >通过审核</button>
+              >
+                <text class="btn-icon">✓</text>
+                <text>审核通过</text>
+              </button>
               
-              <!-- 待审核状态可拒绝 -->
+              <!-- 待审核状态可驳回 -->
               <button 
-                v-if="currentArticle.status === '2'"
+                v-if="String(currentArticle.status) === '2'"
                 class="action-btn btn-warning" 
                 @click="rejectArticleFromPreview"
-              >驳回至草稿</button>
+              >
+                <text class="btn-icon">✗</text>
+                <text>驳回草稿箱</text>
+              </button>
               
               <!-- 草稿状态可发布 -->
               <button 
-                v-if="currentArticle.status === '0'"
+                v-if="String(currentArticle.status) === '0'"
                 class="action-btn btn-primary" 
                 @click="approveArticleFromPreview"
-              >发布文章</button>
+              >
+                <text class="btn-icon">✓</text>
+                <text>发布文章</text>
+              </button>
               
               <!-- 已发布状态可下架 -->
               <button 
-                v-if="currentArticle.status === '1'"
+                v-if="String(currentArticle.status) === '1'"
                 class="action-btn btn-warning" 
                 @click="unpublishArticleFromPreview"
-              >下架文章</button>
+              >
+                <text class="btn-icon">↓</text>
+                <text>下架文章</text>
+              </button>
+              
+              <!-- 已下架状态可重新发布 -->
+              <button 
+                v-if="String(currentArticle.status) === '3'"
+                class="action-btn btn-primary" 
+                @click="approveArticleFromPreview"
+              >
+                <text class="btn-icon">↑</text>
+                <text>重新发布</text>
+              </button>
+              
+              <!-- 调试信息 -->
+              <view class="debug-info">
+                <text>状态值: [{{ currentArticle.status }}], 类型: {{ typeof currentArticle.status }}</text>
+              </view>
+            </view>
+            
+            <!-- 当前可执行的操作提示 -->
+            <view class="action-tips" v-if="getActionTip(currentArticle.status)">
+              <text>{{ getActionTip(currentArticle.status) }}</text>
             </view>
           </view>
         </view>
@@ -449,26 +481,39 @@ const onStatusChange = (e) => {
 // 查看文章详情
 const viewArticle = async (article) => {
   console.log('查看文章详情:', article);
-  currentArticle.value = { ...article };
+  
+  // 先设置初始数据，确保状态为字符串类型
+  currentArticle.value = { 
+    ...article,
+    status: String(article.status) // 确保状态为字符串
+  };
   
   try {
     // 获取完整的文章详情
     const res = await articleApi.getArticleDetail(article.id);
     if (res && res.data) {
-      // 确保保留原始作者信息
+      // 确保保留原始作者信息和状态格式
       const authorName = article.author || article.userName || '';
+      const statusValue = res.data.status !== undefined ? String(res.data.status) : String(article.status);
+      
       currentArticle.value = {
         ...res.data,
         author: res.data.author || authorName,
-        userName: res.data.userName || authorName
+        userName: res.data.userName || authorName,
+        status: statusValue // 确保状态为字符串
       };
+      
       console.log('设置预览文章数据:', currentArticle.value);
+      console.log('当前文章状态:', currentArticle.value.status, '类型:', typeof currentArticle.value.status);
     }
   } catch (error) {
     console.error('获取文章详情失败:', error);
   }
   
-  previewPopup.value.open();
+  setTimeout(() => {
+    // 延迟打开，确保数据已设置完成
+    previewPopup.value.open();
+  }, 100);
 };
 
 // 关闭文章预览弹窗
@@ -510,6 +555,29 @@ const unpublishArticle = async (article) => {
 const unpublishArticleFromPreview = () => {
   updateArticleStatus(currentArticle.value.id, '3');
   closePreviewDialog();
+};
+
+// 从预览框删除文章
+const deleteArticleFromPreview = () => {
+  articleToDeleteId.value = currentArticle.value.id;
+  closePreviewDialog();
+  confirmPopup.value.open();
+};
+
+// 获取当前文章状态对应的操作提示
+const getActionTip = (status) => {
+  switch (String(status)) {
+    case '0': 
+      return '当前为草稿状态，可以发布文章';
+    case '1': 
+      return '当前已发布，可以下架文章';
+    case '2': 
+      return '当前待审核，可以通过或驳回';
+    case '3': 
+      return '当前已下架，可以重新发布';
+    default: 
+      return '';
+  }
 };
 
 // 更新文章状态
@@ -1076,5 +1144,48 @@ onMounted(() => {
 
 .fade-in {
   animation: fadeIn 0.3s ease;
+}
+
+.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f0f0f0;
+  color: #999;
+  border-color: #ddd;
+  box-shadow: none;
+}
+
+.btn-disabled:hover {
+  background-color: #f0f0f0;
+  border-color: #ddd;
+  transform: none;
+}
+
+.btn-icon {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.action-tips {
+  width: 100%;
+  text-align: center;
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.debug-info {
+  margin-top: 10px;
+  padding: 5px;
+  background-color: #f0f8ff;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  width: 100%;
 }
 </style> 
