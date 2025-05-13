@@ -80,7 +80,7 @@
 
 <script setup>
 import { reactive } from 'vue';
-import { login } from '@/api/auth.js'; // 导入登录API
+import { adminLogin } from '@/api/admin/auth.js'; // 导入管理员登录API
 
 // 使用reactive统一管理所有数据
 const data = reactive({
@@ -174,10 +174,9 @@ const handleSubmit = () => {
 		data.loading = true;
 		
 		// 调用管理员登录API
-		login({
-			username: data.formData.username.trim(), // 使用正确的参数名username
-			password: data.formData.password,
-			isAdmin: true // 标记为管理员登录
+		adminLogin({
+			username: data.formData.username.trim(),
+			password: data.formData.password
 		}).then(res => {
 			if (res.code === 200) {
 				// 登录成功，保存token和角色信息到本地存储
