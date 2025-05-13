@@ -55,7 +55,7 @@
             <text class="article-title">{{ article.title }}</text>
           </view>
           <view class="td" style="width: 100px;">{{ article.author || article.userName }}</view>
-          <view class="td" style="width: 150px;">{{ formatDate(article.createTime) }}</view>
+          <view class="td" style="width: 150px;">{{ article.createTime || '暂无时间' }}</view>
           <view class="td" style="width: 60px;">{{ article.viewCount || 0 }}</view>
           <view class="td" style="width: 60px;">{{ article.likeCount || 0 }}</view>
           <view class="td" style="width: 60px;">{{ article.commentCount || 0 }}</view>
@@ -144,7 +144,7 @@
                 <text>作者：{{ currentArticle.author || currentArticle.userName }}</text>
               </view>
               <view class="preview-time">
-                <text>发布时间：{{ formatDate(currentArticle.createTime) }}</text>
+                <text>发布时间：{{ currentArticle.createTime || '暂无时间' }}</text>
               </view>
               <view class="preview-stats">
                 <text>浏览量：{{ currentArticle.viewCount || 0 }}</text>
@@ -305,15 +305,46 @@ const loadingText = {
 const formatDate = (dateStr) => {
   if (!dateStr) return '未知';
   
-  // 简化日期格式
-  if (dateStr.includes(' ')) {
-    const parts = dateStr.split(' ');
-    const date = parts[0];
-    const time = parts[1].substring(0, 5); // 只保留小时和分钟
-    return `${date} ${time}`;
+  try {
+    // 检查是否是有效的日期字符串
+    const isValid = !isNaN(new Date(dateStr).getTime());
+    
+    // 如果是有效的日期字符串且包含空格（日期和时间分开）
+    if (isValid && dateStr.includes(' ')) {
+      const parts = dateStr.split(' ');
+      const date = parts[0];
+      const time = parts[1].length >= 8 ? parts[1] : parts[1] + ':00'; // 确保有秒
+      return `${date}/${time}`;
+    }
+    
+    // 如果只有日期部分（没有时间）
+    if (isValid && !dateStr.includes(' ')) {
+      const date = new Date(dateStr);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}/00:00:00`;
+    }
+    
+    // 如果是时间戳
+    if (!isNaN(dateStr) && String(dateStr).length >= 10) {
+      const timestamp = Number(dateStr);
+      const date = new Date(timestamp * (String(dateStr).length === 10 ? 1000 : 1));
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day}/${hours}:${minutes}:${seconds}`;
+    }
+    
+    // 其他情况，返回原始值
+    return dateStr;
+  } catch (error) {
+    console.error('日期格式化错误:', error, dateStr);
+    return dateStr || '未知';
   }
-  
-  return dateStr;
 };
 
 // 获取状态文本
@@ -390,7 +421,21 @@ const fetchArticles = async (page = 1) => {
       // 处理返回的数据，确保计数字段都有值
       let articleData = Array.isArray(res.data.data) ? res.data.data : [];
       
-      // 修正数据，确保浏览量、点赞数和评论数字段有值
+      // 输出原始日期数据，用于调试
+      if (articleData.length > 0) {
+        const firstItem = articleData[0];
+        console.log('文章日期字段原始值:', {
+          id: firstItem.id,
+          createTime: firstItem.createTime,
+          publishTime: firstItem.publishTime,
+          updateTime: firstItem.updateTime,
+          创建时间: firstItem['创建时间'],
+          发布时间: firstItem['发布时间'],
+          更新时间: firstItem['更新时间']
+        });
+      }
+      
+      // 修正数据，确保计数字段都有值和时间字段正确
       articleData = articleData.map(article => {
         // 检查并转换可能的字符串类型数值为数字
         const viewCount = article.viewCount !== undefined ? 
@@ -411,14 +456,47 @@ const fetchArticles = async (page = 1) => {
         
         const comment_count = article.comment_count !== undefined ? 
           (isNaN(Number(article.comment_count)) ? 0 : Number(article.comment_count)) : 0;
+          
+        // 处理时间字段，检查多个可能的时间字段
+        let timeValue = null;
+        // 按优先级检查可能的时间字段
+        const timeFields = [
+          'createTime', 'create_time', 'createdAt', 'created_at', 'created', 
+          'publishTime', 'publish_time', 'publishedAt', 'published_at', 'published',
+          'updateTime', 'update_time', 'updatedAt', 'updated_at', 'updated',
+          'time', 'date', 'datetime', 'timestamp'
+        ];
+        
+        for (const field of timeFields) {
+          if (article[field]) {
+            timeValue = article[field];
+            break;
+          }
+        }
+        
+        // 检查是否有简体或繁体中文命名的字段
+        const chineseTimeFields = ['创建时间', '发布时间', '更新时间', '時間'];
+        for (const field of chineseTimeFields) {
+          if (article[field]) {
+            timeValue = article[field];
+            break;
+          }
+        }
         
         // 合并处理后的值
-        return {
+        const processedArticle = {
           ...article,
           viewCount: viewCount || view_count,
           likeCount: likeCount || like_count,
           commentCount: commentCount || comment_count
         };
+        
+        // 只有当原始createTime为空但找到了其他时间字段时才更新
+        if (!article.createTime && timeValue) {
+          processedArticle.createTime = timeValue;
+        }
+        
+        return processedArticle;
       });
       
       articles.value = articleData;
@@ -471,6 +549,11 @@ const onStatusChange = (e) => {
 // 查看文章详情
 const viewArticle = async (article) => {
   console.log('查看文章详情:', article);
+  console.log('列表中的时间字段:', {
+    id: article.id,
+    createTime: article.createTime,
+    createTimeType: typeof article.createTime
+  });
   
   // 先设置初始数据，确保状态为字符串类型
   currentArticle.value = { 
@@ -493,8 +576,11 @@ const viewArticle = async (article) => {
         status: statusValue // 确保状态为字符串
       };
       
-      console.log('设置预览文章数据:', currentArticle.value);
-      console.log('当前文章状态:', currentArticle.value.status, '类型:', typeof currentArticle.value.status);
+      console.log('详情中的时间字段:', {
+        id: currentArticle.value.id,
+        createTime: currentArticle.value.createTime,
+        createTimeType: typeof currentArticle.value.createTime
+      });
     }
   } catch (error) {
     console.error('获取文章详情失败:', error);
