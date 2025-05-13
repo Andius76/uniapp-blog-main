@@ -79,7 +79,7 @@
               v-if="article.status === '2'"
               class="btn btn-sm btn-warning" 
               @click="rejectArticle(article)"
-            >驳回为草稿</button>
+            >审核不通过</button>
             
             <!-- 草稿状态可发布 -->
             <button 
@@ -202,7 +202,7 @@
                 @click="rejectArticleFromPreview"
               >
                 <text class="btn-icon">✗</text>
-                <text>驳回为草稿</text>
+                <text>审核不通过</text>
               </button>
               
               <!-- 草稿状态可发布 -->
@@ -319,7 +319,7 @@ const formatDate = (dateStr) => {
 // 获取状态文本
 const getStatusText = (status) => {
   switch (String(status)) {
-    case '0': return '草稿';
+    case '0': return '草稿/未通过';
     case '1': return '已发布';
     case '2': return '待审核';
     case '3': return '已下架';
@@ -603,7 +603,7 @@ const updateArticleStatus = async (id, status) => {
     switch (status) {
       case '0': 
       case 0: 
-        statusText = '已驳回为草稿状态'; 
+        statusText = '驳回成功，审核未通过'; 
         break;
       case '1': 
       case 1: 
@@ -827,8 +827,8 @@ onMounted(() => {
 }
 
 .status-draft {
-  background-color: #f5f5f5;
-  color: #666;
+  background-color: #fff7e6;
+  color: #fa8c16;
 }
 
 .status-pending {
