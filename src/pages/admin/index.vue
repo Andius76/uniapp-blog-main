@@ -5,7 +5,7 @@
       <view class="logo">
         <text class="logo-text">博客管理系统</text>
       </view>
-      <view class="user-info" @click="showUserMenu = !showUserMenu">
+      <view class="user-info" @click.stop="toggleUserMenu">
         <image class="avatar" :src="userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
         <text class="username">{{ userInfo.nickname }}</text>
         <uni-icons type="arrow-down" size="12" color="#fff"></uni-icons>
@@ -22,18 +22,29 @@
     
     <view class="main-content">
       <!-- 侧边栏导航 -->
-      <scroll-view class="sidebar" scroll-y>
-        <view 
-          v-for="(menu, index) in filteredMenuList" 
-          :key="index" 
-          class="menu-item"
-          :class="{ active: currentMenu === menu.id }"
-          @click="handleMenuClick(menu)"
-        >
-          <uni-icons :type="menu.icon" size="18" :color="currentMenu === menu.id ? '#4361ee' : '#666'"></uni-icons>
-          <text class="menu-text">{{ menu.name }}</text>
-        </view>
-      </scroll-view>
+      <view class="sidebar-container">
+        <scroll-view class="sidebar" scroll-y>
+          <view class="debug-info">菜单数: {{filteredMenuList.length}}</view>
+          
+          <!-- 按照分类分组显示菜单 -->
+          <block v-for="category in menuCategories" :key="category">
+            <view class="menu-category" v-if="getCategoryMenus(category).length > 0">
+              <text class="category-title">{{ category }}</text>
+              
+              <view 
+                v-for="(menu, index) in getCategoryMenus(category)" 
+                :key="menu.id" 
+                class="menu-item"
+                :class="{ active: currentMenu === menu.id }"
+                @click="handleMenuClick(menu)"
+              >
+                <uni-icons :type="menu.icon" size="18" :color="currentMenu === menu.id ? '#4361ee' : '#666'"></uni-icons>
+                <text class="menu-text">{{ menu.name }}</text>
+              </view>
+            </view>
+          </block>
+        </scroll-view>
+      </view>
       
       <!-- 内容区域 -->
       <view class="content-wrapper">
@@ -53,12 +64,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
-import UserManagement from './components/UserManagement.vue';
-import ArticleManagement from './components/ArticleManagement.vue';
-import RoleManagement from './components/RoleManagement.vue';
-import PermissionManagement from './components/PermissionManagement.vue';
-import UserRoleAssignment from './components/UserRoleAssignment.vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+// 统一使用 @ 路径导入组件
+import UserManagement from '@/pages/admin/components/UserManagement.vue';
+import ArticleManagement from '@/pages/admin/components/ArticleManagement.vue';
+import RoleManagement from '@/pages/admin/components/RoleManagement.vue';
+import PermissionManagement from '@/pages/admin/components/PermissionManagement.vue';
+import UserRoleAssignment from '@/pages/admin/components/UserRoleAssignment.vue';
+import AdminRoleAssignment from '@/pages/admin/components/AdminRoleAssignment.vue';
 
 // 用户信息
 const userInfo = ref({
@@ -72,61 +85,96 @@ const showUserMenu = ref(false);
 // 当前选中的菜单
 const currentMenu = ref('dashboard');
 
+// 点击切换用户菜单
+const toggleUserMenu = (e) => {
+  e.stopPropagation();
+  showUserMenu.value = !showUserMenu.value;
+};
+
+// 关闭用户菜单的处理函数
+const closeUserMenu = () => {
+  showUserMenu.value = false;
+};
+
 // 菜单列表
 const menuList = reactive([
+  // 通用功能
   {
     id: 'dashboard',
     name: '控制台',
     icon: 'home',
     component: 'Dashboard',
-    roles: ['ADMIN', 'SUPER_ADMIN'] // 管理员和超级管理员都可见
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    category: '系统概览'
   },
+  
+  // 管理员模块
   {
     id: 'userManagement',
     name: '用户管理',
     icon: 'person',
     component: 'UserManagement',
-    roles: ['ADMIN', 'SUPER_ADMIN'] // 管理员和超级管理员都可见
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    category: '管理员功能'
   },
   {
     id: 'articleManagement',
     name: '文章管理',
-    icon: 'file-text',
+    icon: 'upload',  // 更改为更合适的文章管理图标
     component: 'ArticleManagement',
-    roles: ['ADMIN', 'SUPER_ADMIN'] // 管理员和超级管理员都可见
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    category: '管理员功能'
   },
+  
+  // 超级管理员模块
   {
     id: 'roleManagement',
     name: '角色管理',
     icon: 'staff',
     component: 'RoleManagement',
-    roles: ['SUPER_ADMIN'] // 只有超级管理员可见
+    roles: ['SUPER_ADMIN'],
+    category: '超级管理员功能'
   },
   {
     id: 'permissionManagement',
     name: '权限配置',
     icon: 'locked',
     component: 'PermissionManagement',
-    roles: ['SUPER_ADMIN'] // 只有超级管理员可见
+    roles: ['SUPER_ADMIN'],
+    category: '超级管理员功能'
   },
   {
     id: 'userRoleAssignment',
     name: '用户角色分配',
     icon: 'auth',
     component: 'UserRoleAssignment',
-    roles: ['SUPER_ADMIN'] // 只有超级管理员可见
+    roles: ['SUPER_ADMIN'],
+    category: '超级管理员功能'
+  },
+  {
+    id: 'adminRoleAssignment',
+    name: '管理员分配',
+    icon: 'settings',
+    component: 'AdminRoleAssignment',
+    roles: ['SUPER_ADMIN'],
+    category: '超级管理员功能'
   }
 ]);
 
-// 当前用户角色列表 - 为了测试暂时设为包含所有角色
+// 当前用户角色列表 - 默认包含所有角色便于调试
 const userRoles = ref(['SUPER_ADMIN', 'ADMIN']);
 
 // 过滤后的菜单
 const filteredMenuList = computed(() => {
-  return menuList.filter(menu => {
+  console.log('当前用户角色:', userRoles.value);
+  const filtered = menuList.filter(menu => {
     // 判断当前用户是否有权限查看该菜单
-    return menu.roles.some(role => userRoles.value.includes(role));
+    const hasPermission = menu.roles.some(role => userRoles.value.includes(role));
+    console.log(`菜单 ${menu.name} 权限检查:`, hasPermission);
+    return hasPermission;
   });
+  console.log('过滤后的菜单列表:', filtered);
+  return filtered.length > 0 ? filtered : menuList; // 如果过滤后为空，显示所有菜单
 });
 
 // 当前菜单名称
@@ -148,6 +196,7 @@ const componentMap = {
   RoleManagement,
   PermissionManagement,
   UserRoleAssignment,
+  AdminRoleAssignment,
   // 默认控制台组件
   Dashboard: {
     template: `
@@ -238,57 +287,111 @@ const componentMap = {
   }
 };
 
+// 全局点击事件处理函数
+const handleGlobalClick = (e) => {
+  // 点击用户菜单区域外时关闭菜单
+  const userMenuEl = document.querySelector('.user-info');
+  if (userMenuEl && !userMenuEl.contains(e.target)) {
+    showUserMenu.value = false;
+  }
+};
+
+// 初始化函数
+const init = () => {
+  console.log('正在初始化管理员首页...');
+  
+  // 获取用户信息
+  try {
+    const adminInfoStr = uni.getStorageSync('admin_info');
+    console.log('原始管理员信息:', adminInfoStr);
+    
+    if (adminInfoStr) {
+      let parsedInfo;
+      if (typeof adminInfoStr === 'string') {
+        try {
+          parsedInfo = JSON.parse(adminInfoStr);
+        } catch (e) {
+          console.error('解析管理员信息失败:', e);
+          parsedInfo = { nickname: '管理员' };
+        }
+      } else {
+        parsedInfo = adminInfoStr;
+      }
+      userInfo.value = parsedInfo;
+      console.log('处理后的管理员信息:', userInfo.value);
+    }
+    
+    // 获取用户角色
+    const rolesData = uni.getStorageSync('admin_roles');
+    console.log('原始角色数据:', rolesData);
+    
+    if (rolesData) {
+      try {
+        const roles = typeof rolesData === 'string' ? JSON.parse(rolesData) : rolesData;
+        
+        if (Array.isArray(roles) && roles.length > 0) {
+          // 提取角色名称并转换为大写
+          const roleNames = roles.map(role => {
+            const name = role.name || role.roleName || '';
+            return name.toUpperCase();
+          }).filter(name => name);
+          
+          console.log('提取的角色名称:', roleNames);
+          
+          // 转换为系统使用的角色代码
+          if (roleNames.includes('超级管理员') || roleNames.includes('SUPER_ADMIN')) {
+            userRoles.value = ['SUPER_ADMIN', 'ADMIN'];
+          } else if (roleNames.includes('内容管理员') || roleNames.includes('ADMIN')) {
+            userRoles.value = ['ADMIN'];
+          } else {
+            // 保持默认角色确保能看到菜单
+            console.log('未找到匹配的角色，使用默认角色');
+          }
+        } else {
+          console.log('角色数据不是数组或为空，使用默认角色');
+        }
+      } catch (e) {
+        console.error('处理角色数据出错:', e);
+      }
+    } else {
+      console.log('未找到角色数据，使用默认角色');
+    }
+    
+    console.log('最终使用的角色:', userRoles.value);
+    
+    // 默认选中第一个有权限的菜单
+    if (filteredMenuList.value.length > 0) {
+      currentMenu.value = filteredMenuList.value[0].id;
+      console.log('默认选中菜单:', currentMenu.value);
+    }
+  } catch (e) {
+    console.error('初始化过程出错:', e);
+  }
+};
+
 // 生命周期钩子
 onMounted(() => {
-  // 获取用户信息
-  const adminInfo = uni.getStorageSync('admin_info');
-  if (adminInfo) {
-    userInfo.value = adminInfo;
-  }
+  console.log('管理员首页组件已挂载');
+  init();
   
-  // 获取用户角色
-  const roles = uni.getStorageSync('admin_roles');
-  if (roles) {
-    // 将返回的角色对象转换为角色代码数组
-    console.log('获取到的管理员角色信息:', JSON.stringify(roles));
-    
-    // 检查roles是否为数组
-    if (Array.isArray(roles)) {
-      // 直接使用数组
-      const roleNames = roles.map(role => role.name?.toUpperCase() || '');
-      userRoles.value = roleNames.includes('超级管理员') ? 
-        ['SUPER_ADMIN', 'ADMIN'] : 
-        (roleNames.includes('内容管理员') ? ['ADMIN'] : []);
-    } else {
-      // 设置默认角色，确保至少能看到一些菜单
-      console.log('管理员角色不是数组，使用默认角色');
-      userRoles.value = ['ADMIN'];
-    }
-    
-    console.log('处理后的用户角色:', userRoles.value);
-  } else {
-    // 没有角色信息时使用默认角色
-    console.log('未找到管理员角色信息，使用默认角色');
-    userRoles.value = ['ADMIN'];
-  }
-  
-  // 默认选中第一个有权限的菜单
-  if (filteredMenuList.value.length > 0) {
-    currentMenu.value = filteredMenuList.value[0].id;
-  }
-  
-  // 监听点击事件，关闭用户菜单
-  document.addEventListener('click', (e) => {
-    const userInfoEl = document.querySelector('.user-info');
-    if (userInfoEl && !userInfoEl.contains(e.target)) {
-      showUserMenu.value = false;
-    }
-  });
+  // 在H5环境下处理点击事件
+  // #ifdef H5
+  document.addEventListener('click', handleGlobalClick);
+  // #endif
+});
+
+// 组件卸载前移除事件监听
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleGlobalClick);
 });
 
 // 处理菜单点击
 const handleMenuClick = (menu) => {
   currentMenu.value = menu.id;
+  // 在移动端可能需要关闭侧边栏
+  if (window.innerWidth < 768) {
+    // 如果添加了侧边栏切换功能，这里可以关闭侧边栏
+  }
 };
 
 // 退出登录
@@ -311,6 +414,17 @@ const logout = () => {
       showUserMenu.value = false;
     }
   });
+};
+
+// 添加菜单分类计算和获取方法
+const menuCategories = computed(() => {
+  // 获取所有可见菜单的不重复分类
+  const categories = filteredMenuList.value.map(menu => menu.category);
+  return [...new Set(categories)];
+});
+
+const getCategoryMenus = (category) => {
+  return filteredMenuList.value.filter(menu => menu.category === category);
 };
 </script>
 
@@ -417,10 +531,19 @@ const logout = () => {
 }
 
 /* 侧边栏导航 */
-.sidebar {
+.sidebar-container {
+  flex-shrink: 0;
   width: 180px;
   background-color: #ffffff;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  height: 100%;
+  z-index: 10;
+}
+
+.sidebar {
+  width: 180px;
+  height: 100%;
+  background-color: #ffffff;
   padding: 10px 0;
 }
 
@@ -638,5 +761,29 @@ const logout = () => {
   .content {
     padding: 12px;
   }
+}
+
+/* 调试信息 */
+.debug-info {
+  font-size: 12px;
+  color: #999;
+  padding: 5px 15px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed #eee;
+}
+
+/* 菜单分类样式 */
+.menu-category {
+  margin-bottom: 16px;
+}
+
+.category-title {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  padding: 5px 15px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 </style> 
