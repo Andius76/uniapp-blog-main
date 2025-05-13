@@ -119,23 +119,23 @@ function responseInterceptor(response) {
 
 	// 401: 未授权，token过期或无效
 	if (statusCode === 401) {
-		// 清除管理员token
-		uni.removeStorageSync('admin_token');
-		uni.removeStorageSync('admin_info');
-		uni.removeStorageSync('admin_roles');
-		
-		// 跳转到管理员登录页
-		uni.showToast({
-			title: '管理员登录已过期，请重新登录',
-			icon: 'none',
-			duration: 2000
-		});
-
-		setTimeout(() => {
-			uni.redirectTo({
-				url: '/pages/admin-login/admin-login'
+			// 清除管理员token
+			uni.removeStorageSync('admin_token');
+			uni.removeStorageSync('admin_info');
+			uni.removeStorageSync('admin_roles');
+			
+			// 跳转到管理员登录页
+			uni.showToast({
+				title: '管理员登录已过期，请重新登录',
+				icon: 'none',
+				duration: 2000
 			});
-		}, 1500);
+
+			setTimeout(() => {
+				uni.redirectTo({
+					url: '/pages/admin-login/admin-login'
+				});
+			}, 1500);
 
 		return Promise.reject(new Error('登录已过期，请重新登录'));
 	}

@@ -45,7 +45,7 @@
 			"treeShaking": {
 				"enable": true
 			}
-		},
+	},
 		"template": "index.html",
 		"devServer": {
 			"port": 8080,
