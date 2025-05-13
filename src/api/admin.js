@@ -112,26 +112,26 @@ const permissionApi = {
   // 获取权限列表
   getPermissionList(params) {
     console.log('permissionApi.getPermissionList被调用，参数:', JSON.stringify(params));
-    // 使用单数形式的路径
-    return request.get('/api/admin/permission', params);
+    // 使用复数形式的路径
+    return request.get('/api/admin/permissions', params);
   },
   
   // 添加权限
   addPermission(data) {
     console.log('permissionApi.addPermission被调用，数据:', JSON.stringify(data));
-    return request.post('/api/admin/permission', data);
+    return request.post('/api/admin/permissions', data);
   },
   
   // 更新权限
   updatePermission(id, data) {
     console.log('permissionApi.updatePermission被调用，ID:', id, '数据:', JSON.stringify(data));
-    return request.put(`/api/admin/permission/${id}`, data);
+    return request.put(`/api/admin/permissions/${id}`, data);
   },
   
   // 删除权限
   deletePermission(id) {
     console.log('permissionApi.deletePermission被调用，ID:', id);
-    return request.delete(`/api/admin/permission/${id}`);
+    return request.delete(`/api/admin/permissions/${id}`);
   }
 }
 

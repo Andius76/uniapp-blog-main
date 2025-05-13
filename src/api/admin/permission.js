@@ -13,10 +13,42 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   getPermissionList(params) {
-    console.log('正在请求权限列表，参数:', JSON.stringify(params));
+    // 确保必要参数存在
+    const validParams = {
+      page: params.page || 1,
+      size: params.size || 10,
+      ...(params.keyword ? { keyword: params.keyword } : {})
+    };
     
-    // 直接使用复数形式的API路径
-    return http.get('/api/admin/permissions', params, { withToken: true });
+    console.log('正在请求权限列表，参数:', JSON.stringify(validParams));
+    
+    // 添加错误重试和诊断
+    return new Promise((resolve, reject) => {
+      http.get('/api/admin/permissions', validParams, { withToken: true })
+        .then(response => {
+          console.log('权限列表请求成功:', response);
+          resolve(response);
+        })
+        .catch(error => {
+          console.error('权限列表请求失败:', error);
+          
+          // 如果是分页参数导致的错误，尝试用默认值重试一次
+          if (error.message && error.message.includes('page') && params.size > 10) {
+            console.log('尝试使用默认分页参数重试请求');
+            http.get('/api/admin/permissions', { page: 1, size: 10 }, { withToken: true })
+              .then(response => {
+                console.log('使用默认参数重试成功:', response);
+                resolve(response);
+              })
+              .catch(retryError => {
+                console.error('即使使用默认参数仍然失败:', retryError);
+                reject(retryError);
+              });
+          } else {
+            reject(error);
+          }
+        });
+    });
   },
   
   /**

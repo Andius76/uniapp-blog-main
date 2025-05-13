@@ -1,4 +1,20 @@
 <template>
+  <!-- 
+  /**
+   * 权限管理组件
+   * 
+   * 功能：
+   * 1. 权限列表展示、分页、搜索
+   * 2. 权限的添加、编辑、删除
+   * 3. 角色权限分配
+   * 
+   * 错误处理：
+   * 1. 表单验证 - 防止提交无效数据
+   * 2. 网络请求错误 - 包括后端业务错误和HTTP错误
+   * 3. 特殊错误处理 - 如权限标识符重复错误(Duplicate entry for key 'idx_code')
+   * 4. 权限标识符格式建议 - 推荐使用"资源:操作"格式
+   */
+  -->
   <view class="permission-management">
     <view class="tab-container">
       <view 
@@ -252,11 +268,11 @@
         :before-close="true"
         @confirm="savePermission"
         @close="closeDialog"
-        width="85%"
+        width="90%"
       >
-        <view class="dialog-form" style="max-width: 100%; padding: 5px 10px;">
+        <view class="dialog-form" style="max-width: 100%; padding: 10px;">
           <view class="form-item">
-            <text class="form-label">权限名称</text>
+            <text class="form-label">权限名称 <text style="color: #ff4d4f;">*</text></text>
             <input 
               class="form-input" 
               v-model="currentPermission.name"
@@ -270,8 +286,10 @@
               class="form-input" 
               v-model="currentPermission.code"
               placeholder="请输入权限标识符，如：user:add" 
+              @input="validatePermissionCode"
             />
-            <text style="font-size: 12px; color: #999; margin-top: 3px; display: block; word-break: break-word;">唯一标识符，用于系统识别权限，如：user:view, article:edit</text>
+            <text style="font-size: 12px; color: #999; margin-top: 3px; display: block; word-break: break-word;">唯一标识符，用于系统识别权限，建议采用"资源:操作"格式，如：user:view, article:edit</text>
+            <text v-if="codeError" style="font-size: 12px; color: #ff4d4f; margin-top: 3px; display: block;">{{ codeError }}</text>
           </view>
           
           <view class="form-item">
@@ -279,8 +297,9 @@
             <input 
               class="form-input" 
               v-model="currentPermission.path"
-              placeholder="请输入权限路径，如：/user/add" 
+              placeholder="请输入权限路径，如：/api/admin/users" 
             />
+            <text style="font-size: 12px; color: #999; margin-top: 3px; display: block;">API访问路径，用于后端权限控制，可选填</text>
           </view>
           
           <view class="form-item">
@@ -393,6 +412,41 @@ const loadingText = {
 // 权限搜索相关
 const permissionSearchText = ref('');
 const permissionCategory = ref('all');
+
+// 权限标识符错误提示
+const codeError = ref('');
+
+// 验证权限标识符
+const validatePermissionCode = () => {
+  // 重置错误提示
+  codeError.value = '';
+  
+  // 检查是否为空
+  if (!currentPermission.code || currentPermission.code.trim() === '') {
+    codeError.value = '权限标识符不能为空';
+    return false;
+  }
+  
+  // 检查长度，至少3个字符
+  if (currentPermission.code.length < 3) {
+    codeError.value = '权限标识符至少需要3个字符';
+    return false;
+  }
+  
+  // 检查是否为纯数字
+  if (/^\d+$/.test(currentPermission.code)) {
+    codeError.value = '权限标识符不能是纯数字';
+    return false;
+  }
+  
+  // 检查格式，建议使用 resource:action 格式
+  if (!currentPermission.code.includes(':')) {
+    codeError.value = '建议使用"资源:操作"格式，如：user:add';
+    // 这里我们只显示建议，但仍然允许保存
+  }
+  
+  return true;
+};
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -631,6 +685,7 @@ const fetchAllPermissions = async () => {
     
     // 构造查询参数，获取所有权限
     const params = {
+      page: 1,  // 添加页码参数，从第1页开始
       size: 999 // 获取所有权限
     };
     
@@ -781,6 +836,9 @@ const showCreateDialog = () => {
     isSystem: '0'
   });
   
+  // 重置错误提示
+  codeError.value = '';
+  
   dialogTitle.value = '新增权限';
   popup.value.open();
 };
@@ -798,6 +856,9 @@ const editPermission = (permission) => {
   // 复制权限数据
   Object.assign(currentPermission, { ...permission });
   
+  // 重置错误提示
+  codeError.value = '';
+  
   dialogTitle.value = '编辑权限';
   popup.value.open();
 };
@@ -813,9 +874,10 @@ const savePermission = async () => {
     return;
   }
   
-  if (!currentPermission.code) {
+  // 验证权限标识符
+  if (!validatePermissionCode()) {
     uni.showToast({
-      title: '权限标识符不能为空',
+      title: codeError.value,
       icon: 'none'
     });
     return;
@@ -860,9 +922,39 @@ const savePermission = async () => {
     closeDialog();
   } catch (error) {
     console.error('保存权限失败:', error);
+    
+    // 检查是否是权限标识符重复错误
+    let errorMsg = '保存失败';
+    
+    if (error.response && error.response.data && error.response.data.message) {
+      errorMsg = error.response.data.message;
+    } else if (error.message) {
+      errorMsg = error.message;
+    }
+    
+    // 判断错误类型并提供更具体的错误提示
+    if (errorMsg.includes('Duplicate entry') && errorMsg.includes('idx_code')) {
+      // 权限标识符重复错误
+      errorMsg = `权限标识符"${currentPermission.code}"已存在，请使用其他标识符`;
+      
+      // 标记权限标识符输入框错误
+      codeError.value = '此权限标识符已被使用，请更换一个';
+      
+      // 显示带图标的错误提示
+      uni.showModal({
+        title: '添加失败',
+        content: errorMsg,
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+      return;
+    }
+    
+    // 其他错误的通用提示
     uni.showToast({
-      title: error.message || '保存失败',
-      icon: 'none'
+      title: errorMsg,
+      icon: 'none',
+      duration: 3000
     });
   } finally {
     loading.value = false;
