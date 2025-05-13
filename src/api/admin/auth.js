@@ -9,20 +9,18 @@
  */
 
 // 导入请求工具
-import http from '@/utils/request.js';
+import request from '@/utils/request.js'
 
 /**
  * 管理员登录
- * @param {Object} data - 请求数据
- * @param {string} data.username - 管理员账号
- * @param {string} data.password - 管理员密码
- * @returns {Promise} - 返回Promise对象
+ * @param {Object} data - 登录信息
+ * @param {String} data.username - 用户名
+ * @param {String} data.password - 密码
+ * @returns {Promise} - 返回登录结果
  */
 export function adminLogin(data) {
-  return http.post('/api/admin/login', {
-    username: data.username,
-    password: data.password
-  });
+  console.log('调用管理员登录API:', data);
+  return request.post('/api/admin/login', data);
 }
 
 /**
@@ -30,7 +28,7 @@ export function adminLogin(data) {
  * @returns {Promise} - 返回Promise对象
  */
 export function getAdminInfo() {
-  return http.get('/api/admin/info');
+  return request.get('/api/admin/info');
 }
 
 /**
@@ -38,5 +36,5 @@ export function getAdminInfo() {
  * @returns {Promise} - 返回Promise对象
  */
 export function adminLogout() {
-  return http.post('/api/admin/logout');
+  return request.post('/api/admin/logout');
 } 
