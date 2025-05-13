@@ -15,13 +15,8 @@ export default {
   getPermissionList(params) {
     console.log('正在请求权限列表，参数:', JSON.stringify(params));
     
-    // 首先尝试使用单数形式的API路径
-    return http.get('/api/admin/permission', params, { withToken: true })
-      .catch(error => {
-        console.warn('单数形式API请求失败，尝试复数形式:', error);
-        // 如果失败，尝试复数形式的API
-        return http.get('/api/admin/permissions', params, { withToken: true });
-      });
+    // 直接使用复数形式的API路径
+    return http.get('/api/admin/permissions', params, { withToken: true });
   },
   
   /**
@@ -30,13 +25,8 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   getPermissionDetail(id) {
-    // 尝试单数形式
-    return http.get(`/api/admin/permission/${id}`, {}, { withToken: true })
-      .catch(error => {
-        console.warn('单数形式API请求失败，尝试复数形式:', error);
-        // 如果失败，尝试复数形式
-        return http.get(`/api/admin/permissions/${id}`, {}, { withToken: true });
-      });
+    // 直接使用复数形式
+    return http.get(`/api/admin/permissions/${id}`, {}, { withToken: true });
   },
   
   /**
@@ -49,13 +39,8 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   addPermission(data) {
-    // 尝试单数形式
-    return http.post('/api/admin/permission', data, { withToken: true })
-      .catch(error => {
-        console.warn('单数形式API请求失败，尝试复数形式:', error);
-        // 如果失败，尝试复数形式
-        return http.post('/api/admin/permissions', data, { withToken: true });
-      });
+    // 直接使用复数形式
+    return http.post('/api/admin/permissions', data, { withToken: true });
   },
   
   /**
@@ -69,13 +54,8 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   updatePermission(id, data) {
-    // 尝试单数形式
-    return http.put(`/api/admin/permission/${id}`, data, { withToken: true })
-      .catch(error => {
-        console.warn('单数形式API请求失败，尝试复数形式:', error);
-        // 如果失败，尝试复数形式
-        return http.put(`/api/admin/permissions/${id}`, data, { withToken: true });
-      });
+    // 直接使用复数形式
+    return http.put(`/api/admin/permissions/${id}`, data, { withToken: true });
   },
   
   /**
@@ -84,13 +64,8 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   deletePermission(id) {
-    // 尝试单数形式
-    return http.delete(`/api/admin/permission/${id}`, {}, { withToken: true })
-      .catch(error => {
-        console.warn('单数形式API请求失败，尝试复数形式:', error);
-        // 如果失败，尝试复数形式
-        return http.delete(`/api/admin/permissions/${id}`, {}, { withToken: true });
-      });
+    // 直接使用复数形式
+    return http.delete(`/api/admin/permissions/${id}`, {}, { withToken: true });
   },
   
   /**
@@ -98,13 +73,8 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   getAllPermissions() {
-    // 尝试单数形式
-    return http.get('/api/admin/permission/all', {}, { withToken: true })
-      .catch(error => {
-        console.warn('单数形式API请求失败，尝试复数形式:', error);
-        // 如果失败，尝试复数形式
-        return http.get('/api/admin/permissions/all', {}, { withToken: true });
-      });
+    // 直接使用复数形式
+    return http.get('/api/admin/permissions/all', {}, { withToken: true });
   },
   
   /**
@@ -113,17 +83,7 @@ export default {
    * @returns {Promise} 返回Promise对象
    */
   getRolePermissions(roleId) {
-    // 尝试标准路径
-    return http.get(`/api/admin/roles/${roleId}/permissions`, {}, { withToken: true })
-      .catch(error => {
-        console.warn('标准权限路径请求失败，尝试备用路径1:', error);
-        // 如果失败，尝试备用路径1
-        return http.get(`/api/admin/permission/role/${roleId}`, {}, { withToken: true })
-          .catch(error2 => {
-            console.warn('备用路径1请求失败，尝试备用路径2:', error2);
-            // 如果再次失败，尝试备用路径2
-            return http.get(`/api/admin/permissions/role/${roleId}`, {}, { withToken: true });
-          });
-      });
+    // 使用标准角色权限路径
+    return http.get(`/api/admin/roles/${roleId}/permissions`, {}, { withToken: true });
   }
 } 

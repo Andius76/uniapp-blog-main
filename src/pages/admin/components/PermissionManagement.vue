@@ -510,24 +510,8 @@ const fetchRolePermissions = async (roleId) => {
   try {
     console.log('开始获取角色权限, 角色ID:', roleId);
     
-    // 尝试不同的API路径
-    let res;
-    try {
-      // 使用正确的API路径获取角色权限
-      res = await rolePermissionApi.getRolePermissions(roleId);
-    } catch (firstError) {
-      console.warn('标准权限路径请求失败，尝试备用路径:', firstError);
-      
-      // 尝试备用API路径
-      try {
-        // 可能的备用路径，例如单数形式的endpoint
-        res = await http.get(`/api/admin/permissions/role/${roleId}`, {}, { withToken: true });
-      } catch (secondError) {
-        console.error('备用权限路径也失败:', secondError);
-        // 继续抛出错误
-        throw secondError;
-      }
-    }
+    // 使用标准API路径获取角色权限
+    const res = await rolePermissionApi.getRolePermissions(roleId);
     
     console.log('获取角色权限响应:', JSON.stringify(res));
     
@@ -652,18 +636,8 @@ const fetchAllPermissions = async () => {
     
     console.log('发送请求参数:', JSON.stringify(params));
     
-    // 尝试两个不同的API路径
-    let res;
-    try {
-      // 先尝试复数形式的API
-      res = await permissionApi.getPermissionList(params);
-    } catch (error) {
-      console.warn('复数形式API请求失败，尝试单数形式:', error);
-      // 如果失败，尝试单数形式的API (如果有的话)
-      // 这里假设你有一个单数形式的API
-      // 如果没有，可以移除这部分代码
-      // res = await permissionApi.getPermission(params);
-    }
+    // 直接使用复数形式的API
+    const res = await permissionApi.getPermissionList(params);
     
     console.log('获取所有权限响应:', JSON.stringify(res));
     
