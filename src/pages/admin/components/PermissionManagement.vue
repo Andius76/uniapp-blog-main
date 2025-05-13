@@ -20,14 +20,14 @@
       <view 
         class="tab-item" 
         :class="{ active: activeTab === 'permissions' }"
-        @click="activeTab = 'permissions'"
+        @click="switchToPermissions"
       >
         <text>权限列表</text>
       </view>
       <view 
         class="tab-item" 
         :class="{ active: activeTab === 'assignment' }"
-        @click="activeTab = 'assignment'"
+        @click="switchToAssignment"
       >
         <text>权限分配</text>
       </view>
@@ -58,6 +58,7 @@
           
           <view v-else-if="permissions.length === 0" class="no-data">
             <text>暂无权限数据</text>
+            <button class="btn btn-sm retry-btn" @click="fetchPermissions(1)">重新加载</button>
           </view>
           
           <view v-else class="table-row" v-for="(permission, index) in permissions" :key="permission.id">
@@ -448,6 +449,20 @@ const validatePermissionCode = () => {
   return true;
 };
 
+// 适配权限数据，统一处理不同格式的权限对象
+const adaptPermissionData = (permission) => {
+  // 确保返回一个标准的权限对象
+  return {
+    id: permission.id || permission.permissionId || 0,
+    name: permission.name || permission.permissionName || '未命名权限',
+    code: permission.code || permission.permissionCode || '',
+    path: permission.path || permission.permissionPath || '',
+    description: permission.description || permission.desc || '',
+    createTime: permission.createTime || permission.createDate || '',
+    isSystem: permission.isSystem || '0'
+  };
+};
+
 // 格式化日期
 const formatDate = (dateStr) => {
   if (!dateStr) return '未知';
@@ -638,25 +653,44 @@ const fetchPermissions = async (page = 1) => {
     
     const res = await permissionApi.getPermissionList(params);
     
+    // 使用调试辅助函数分析返回的数据结构
+    debugDataStructure(res, '权限列表接口返回数据');
+    
     console.log('获取权限列表响应:', JSON.stringify(res));
     
     // 确保返回的数据格式正确
     if (res && res.data) {
+      let permList = [];
+      
       if (Array.isArray(res.data)) {
         // 直接返回数组形式
-    permissions.value = res.data;
-        totalPermissions.value = res.total || 0;
+        permList = res.data;
+        totalPermissions.value = res.total || res.data.length || 0;
       } else if (res.data.list && Array.isArray(res.data.list)) {
         // 返回包含list的对象形式
-        permissions.value = res.data.list;
-        totalPermissions.value = res.data.total || 0;
+        permList = res.data.list;
+        totalPermissions.value = res.data.total || res.data.list.length || 0;
+      } else if (typeof res.data === 'object') {
+        // 尝试将对象转换为数组
+        permList = Object.values(res.data).filter(item => typeof item === 'object');
+        totalPermissions.value = permList.length;
+        console.log('转换后权限列表:', JSON.stringify(permList));
       } else {
         console.error('返回数据格式异常:', res);
-        permissions.value = [];
+        permList = [];
         totalPermissions.value = 0;
       }
+      
+      // 使用适配器统一处理权限数据格式
+      permissions.value = permList.map(item => adaptPermissionData(item));
+      
       console.log('解析后权限列表:', JSON.stringify(permissions.value));
       console.log('总权限数:', totalPermissions.value);
+    } else if (Array.isArray(res)) {
+      // 直接返回数组
+      permissions.value = res.map(item => adaptPermissionData(item));
+      totalPermissions.value = res.length;
+      console.log('直接返回数组形式的权限列表:', JSON.stringify(permissions.value));
     } else {
       console.error('返回数据格式错误:', res);
       permissions.value = [];
@@ -698,15 +732,21 @@ const fetchAllPermissions = async () => {
     
     // 确保返回的数据格式正确
     if (res && res.data) {
+      let permList = [];
+      
       if (Array.isArray(res.data)) {
         // 直接返回数组形式
-        allPermissions.value = res.data;
+        permList = res.data;
       } else if (res.data.list && Array.isArray(res.data.list)) {
         // 返回包含list的对象形式
-        allPermissions.value = res.data.list;
+        permList = res.data.list;
+      } else if (typeof res.data === 'object') {
+        // 尝试将对象转换为数组
+        permList = Object.values(res.data).filter(item => typeof item === 'object');
+        console.log('转换后所有权限列表:', JSON.stringify(permList));
       } else {
         console.error('返回数据格式异常:', res);
-        allPermissions.value = [];
+        permList = [];
         
         // 显示错误提示
         uni.showToast({
@@ -714,8 +754,16 @@ const fetchAllPermissions = async () => {
           icon: 'none'
         });
       }
+      
+      // 使用适配器统一处理权限数据格式
+      allPermissions.value = permList.map(item => adaptPermissionData(item));
+      
       console.log('解析后所有权限列表:', JSON.stringify(allPermissions.value));
       console.log('权限总数量:', allPermissions.value.length);
+    } else if (Array.isArray(res)) {
+      // 直接返回数组
+      allPermissions.value = res.map(item => adaptPermissionData(item));
+      console.log('直接返回数组形式的所有权限列表:', JSON.stringify(allPermissions.value));
     } else {
       console.error('返回数据格式错误:', res);
       allPermissions.value = [];
@@ -1154,6 +1202,10 @@ onMounted(() => {
   // 使用简化版的初始化，减少复杂性
   setTimeout(async () => {
     try {
+      // 获取权限列表（用于权限列表页面展示）
+      await fetchPermissions();
+      console.log('权限列表加载完成');
+      
       // 先获取所有权限（用于分配）
       await fetchAllPermissions();
       console.log('所有权限加载完成');
@@ -1253,6 +1305,60 @@ const checkSuperAdminPermissions = async () => {
     }
   } catch (err) {
     console.error('检查超级管理员权限配置失败:', err);
+  }
+};
+
+// 调试辅助函数 - 输出数据结构到控制台
+const debugDataStructure = (data, label = '数据结构') => {
+  console.group(`===== ${label} =====`);
+  try {
+    console.log('数据类型:', typeof data);
+    if (Array.isArray(data)) {
+      console.log('是否数组: 是，长度:', data.length);
+      if (data.length > 0) {
+        console.log('第一项类型:', typeof data[0]);
+        console.log('第一项数据:', data[0]);
+      }
+    } else if (typeof data === 'object' && data !== null) {
+      console.log('是否对象: 是');
+      console.log('键列表:', Object.keys(data));
+      if ('data' in data) {
+        console.log('包含data键');
+        console.log('data类型:', typeof data.data);
+        if (Array.isArray(data.data)) {
+          console.log('data是数组，长度:', data.data.length);
+          if (data.data.length > 0) {
+            console.log('第一项样例:', data.data[0]);
+          }
+        } else if (typeof data.data === 'object' && data.data !== null) {
+          console.log('data是对象，键:', Object.keys(data.data));
+        }
+      }
+    }
+  } catch (err) {
+    console.error('调试过程中出错:', err);
+  }
+  console.groupEnd();
+};
+
+// 切换到权限列表标签页并刷新数据
+const switchToPermissions = () => {
+  activeTab.value = 'permissions';
+  // 确保切换标签页时刷新权限列表数据
+  if (permissions.value.length === 0) {
+    fetchPermissions(1);
+  }
+};
+
+// 切换到权限分配标签页
+const switchToAssignment = () => {
+  activeTab.value = 'assignment';
+  // 确保切换标签页时加载所有权限和角色数据
+  if (allPermissions.value.length === 0) {
+    fetchAllPermissions();
+  }
+  if (roles.value.length === 0) {
+    fetchRoles();
   }
 };
 </script>
@@ -1724,5 +1830,19 @@ const checkSuperAdminPermissions = async () => {
 .refresh-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 重试按钮样式 */
+.retry-btn {
+  margin-top: 15px;
+  background-color: #f0f7ff;
+  color: #4361ee;
+  border: 1px solid #4361ee;
+  padding: 6px 15px;
+  border-radius: 4px;
+}
+
+.retry-btn:hover {
+  background-color: #e0f0ff;
 }
 </style> 
