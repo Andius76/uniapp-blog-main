@@ -79,7 +79,7 @@
               v-if="article.status === '2'"
               class="btn btn-sm btn-warning" 
               @click="rejectArticle(article)"
-            >驳回</button>
+            >驳回为草稿</button>
             
             <!-- 草稿状态可发布 -->
             <button 
@@ -202,7 +202,7 @@
                 @click="rejectArticleFromPreview"
               >
                 <text class="btn-icon">✗</text>
-                <text>驳回草稿箱</text>
+                <text>驳回为草稿</text>
               </button>
               
               <!-- 草稿状态可发布 -->
@@ -603,7 +603,7 @@ const updateArticleStatus = async (id, status) => {
     switch (status) {
       case '0': 
       case 0: 
-        statusText = '已驳回至草稿'; 
+        statusText = '已驳回为草稿状态'; 
         break;
       case '1': 
       case 1: 
