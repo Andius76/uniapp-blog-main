@@ -70,7 +70,7 @@ const userApi = {
   // 更新用户状态
   updateUserStatus(id, status) {
     console.log('userApi.updateUserStatus被调用，ID:', id, '状态:', status);
-    return request.patch(`/api/admin/users/${id}/status`, { status });
+    return request.put(`/api/admin/users/${id}/status`, { status });
   }
 }
 
