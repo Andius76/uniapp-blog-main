@@ -22,6 +22,24 @@
             <uni-icons type="arrow-down" size="14" color="#666"></uni-icons>
           </view>
         </picker>
+        
+        <!-- 排序选择器 -->
+        <picker 
+          @change="onSortChange" 
+          :value="sortOptionIndex" 
+          :range="sortOptions"
+        >
+          <view class="picker-box">
+            <text>排序：{{ sortOptions[sortOptionIndex] }}</text>
+            <uni-icons type="arrow-down" size="14" color="#666"></uni-icons>
+          </view>
+        </picker>
+        
+        <!-- 排序方向选择器 -->
+        <view class="sort-direction" @click="toggleSortDirection">
+          <text>{{ sortDirection === 'desc' ? '降序' : '升序' }}</text>
+          <uni-icons :type="sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" size="14" color="#666"></uni-icons>
+        </view>
       </view>
     </view>
 
@@ -31,10 +49,30 @@
         <view class="th" style="width: 50px;">ID</view>
         <view class="th" style="flex: 1; min-width: 150px;">标题</view>
         <view class="th" style="width: 100px;">作者</view>
-        <view class="th" style="width: 150px;">发布时间</view>
-        <view class="th" style="width: 60px;">浏览量</view>
-        <view class="th" style="width: 60px;">点赞数</view>
-        <view class="th" style="width: 60px;">评论数</view>
+        <view class="th sortable-th" style="width: 150px;" @click="quickSort('createTime')">
+          发布时间
+          <text v-if="sortFields[sortOptionIndex] === 'createTime'" class="sort-indicator">
+            {{ sortDirection === 'desc' ? '↓' : '↑' }}
+          </text>
+        </view>
+        <view class="th sortable-th" style="width: 60px;" @click="quickSort('viewCount')">
+          浏览量
+          <text v-if="sortFields[sortOptionIndex] === 'viewCount'" class="sort-indicator">
+            {{ sortDirection === 'desc' ? '↓' : '↑' }}
+          </text>
+        </view>
+        <view class="th sortable-th" style="width: 60px;" @click="quickSort('likeCount')">
+          点赞数
+          <text v-if="sortFields[sortOptionIndex] === 'likeCount'" class="sort-indicator">
+            {{ sortDirection === 'desc' ? '↓' : '↑' }}
+          </text>
+        </view>
+        <view class="th sortable-th" style="width: 60px;" @click="quickSort('commentCount')">
+          评论数
+          <text v-if="sortFields[sortOptionIndex] === 'commentCount'" class="sort-indicator">
+            {{ sortDirection === 'desc' ? '↓' : '↑' }}
+          </text>
+        </view>
         <view class="th" style="width: 80px;">状态</view>
         <view class="th" style="width: 180px;">操作</view>
       </view>
@@ -268,9 +306,15 @@ import http from '@/utils/request.js';
 const searchKeyword = ref('');
 
 // 状态过滤
-const statusOptions = ['全部', '已发布', '待审核', '草稿', '已下架'];
+const statusOptions = ['全部', '已发布', '待审核', '草稿/未通过', '已下架'];
 const statusFilterIndex = ref(0);
 const statusFilters = ['', '1', '2', '0', '3'];
+
+// 排序选项
+const sortOptions = ['默认排序', '发布时间', '浏览量', '点赞数', '评论数'];
+const sortOptionIndex = ref(0); 
+const sortFields = ['', 'createTime', 'viewCount', 'likeCount', 'commentCount'];
+const sortDirection = ref('desc'); // 默认降序排序
 
 // 文章列表数据
 const articles = ref([]);
@@ -411,6 +455,13 @@ const fetchArticles = async (page = 1) => {
       keyword: searchKeyword.value
     };
     
+    // 添加排序参数
+    const sortField = sortFields[sortOptionIndex.value];
+    if (sortField) {
+      params.sortBy = sortField;
+      params.sortDirection = sortDirection.value;
+    }
+    
     console.log('发送请求参数:', JSON.stringify(params));
     
     const res = await articleApi.getArticleList(params);
@@ -513,6 +564,39 @@ const fetchArticles = async (page = 1) => {
         return processedArticle;
       });
       
+      // 如果后端没有处理排序，在前端进行排序
+      if (sortField) {
+        const field = sortFields[sortOptionIndex.value];
+        if (field) {
+          console.log('执行前端排序，字段:', field, '方向:', sortDirection.value);
+          articleData.sort((a, b) => {
+            // 获取排序字段的值，可能是数字或日期字符串
+            let aValue = a[field];
+            let bValue = b[field];
+            
+            // 对日期字段特殊处理
+            if (field === 'createTime') {
+              // 尝试将日期转换为时间戳进行比较
+              try {
+                aValue = new Date(aValue).getTime() || 0;
+                bValue = new Date(bValue).getTime() || 0;
+              } catch (e) {
+                console.error('日期排序错误:', e);
+              }
+            } else {
+              // 确保数值字段是数字
+              aValue = isNaN(Number(aValue)) ? 0 : Number(aValue);
+              bValue = isNaN(Number(bValue)) ? 0 : Number(bValue);
+            }
+            
+            // 根据排序方向返回比较结果
+            return sortDirection.value === 'asc' 
+              ? aValue - bValue 
+              : bValue - aValue;
+          });
+        }
+      }
+      
       articles.value = articleData;
       total.value = res.data.total || 0;
       
@@ -553,10 +637,68 @@ const resetSearch = () => {
   fetchArticles(1);
 };
 
+// 快速排序，点击表头时触发
+const quickSort = (field) => {
+  const fieldIndex = sortFields.indexOf(field);
+  if (fieldIndex !== -1) {
+    // 如果已经是选中字段，切换排序方向
+    if (sortOptionIndex.value === fieldIndex) {
+      toggleSortDirection();
+    } else {
+      // 否则，设置新的排序字段
+      sortOptionIndex.value = fieldIndex;
+      fetchArticles(1);
+      
+      // 提示用户排序已变更
+      uni.showToast({
+        title: `按${sortOptions[sortOptionIndex.value]}${sortDirection.value === 'desc' ? '降序' : '升序'}排列`,
+        icon: 'none',
+        duration: 1500
+      });
+    }
+  }
+};
+
 // 状态筛选变更
 const onStatusChange = (e) => {
   statusFilterIndex.value = e.detail.value;
   console.log('状态筛选变更为:', statusOptions[statusFilterIndex.value]);
+  fetchArticles(1);
+};
+
+// 排序选项变更
+const onSortChange = (e) => {
+  sortOptionIndex.value = e.detail.value;
+  console.log('排序方式变更为:', sortOptions[sortOptionIndex.value]);
+  
+  // 提示用户排序已变更
+  const sortName = sortOptions[sortOptionIndex.value];
+  if (sortName !== '默认排序') {
+    uni.showToast({
+      title: `按${sortName}${sortDirection.value === 'desc' ? '降序' : '升序'}排列`,
+      icon: 'none',
+      duration: 1500
+    });
+  }
+  
+  fetchArticles(1);
+};
+
+// 切换排序方向
+const toggleSortDirection = () => {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+  console.log('排序方向变更为:', sortDirection.value);
+  
+  // 提示用户排序方向已变更
+  if (sortOptionIndex.value !== 0) { // 非默认排序
+    const sortName = sortOptions[sortOptionIndex.value];
+    uni.showToast({
+      title: `按${sortName}${sortDirection.value === 'desc' ? '降序' : '升序'}排列`,
+      icon: 'none',
+      duration: 1500
+    });
+  }
+  
   fetchArticles(1);
 };
 
@@ -812,14 +954,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
 .search-box {
   flex: 1;
+  min-width: 250px;
 }
 
 .filter-box {
+  display: flex;
+  gap: 10px;
   margin-left: 10px;
+  flex-wrap: wrap;
 }
 
 .picker-box {
@@ -836,6 +983,27 @@ onMounted(() => {
 }
 
 .picker-box text {
+  margin-right: 5px;
+}
+
+.sort-direction {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f0f8ff;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-direction:active {
+  transform: scale(0.98);
+  background-color: #e6f0ff;
+}
+
+.sort-direction text {
   margin-right: 5px;
 }
 
@@ -1277,5 +1445,21 @@ onMounted(() => {
   color: #666;
   text-align: center;
   width: 100%;
+}
+
+.sortable-th {
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.sortable-th:hover {
+  background-color: #f0f8ff;
+}
+
+.sort-indicator {
+  margin-left: 5px;
+  font-weight: bold;
+  color: #4361ee;
 }
 </style> 
