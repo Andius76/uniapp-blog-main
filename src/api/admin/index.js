@@ -193,6 +193,27 @@ export const roleApi = {
    */
   deleteRole(id) {
     return http.delete(`/api/admin/roles/${id}`);
+  },
+
+  /**
+   * 获取管理员的角色列表
+   * @param {number} adminId 管理员ID
+   * @returns {Promise} 返回Promise对象
+   */
+  getAdminRoles(adminId) {
+    console.log('获取管理员角色，管理员ID:', adminId);
+    return http.get(`/api/admin/adminRoles/${adminId}`);
+  },
+  
+  /**
+   * 为管理员分配角色
+   * @param {number} adminId 管理员ID
+   * @param {number} roleId 角色ID
+   * @returns {Promise} 返回Promise对象
+   */
+  assignAdminRole(adminId, roleId) {
+    console.log('为管理员分配角色，管理员ID:', adminId, '角色ID:', roleId);
+    return http.post(`/api/admin/adminRoles`, { adminId, roleId });
   }
 };
 

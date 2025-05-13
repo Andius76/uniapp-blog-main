@@ -443,15 +443,64 @@ const onPermissionSearch = (e) => {
 
 // 刷新当前角色的权限
 const refreshCurrentRolePermissions = async () => {
-  if (!selectedRole.value) return;
+  if (!selectedRole.value) {
+    uni.showToast({
+      title: '请先选择一个角色',
+      icon: 'none'
+    });
+    return;
+  }
   
   console.log('刷新角色权限, 角色ID:', selectedRole.value);
-  await fetchRolePermissions(selectedRole.value);
   
-  uni.showToast({
-    title: '权限数据已刷新',
-    icon: 'success'
+  // 显示加载中
+  uni.showLoading({
+    title: '获取权限中...',
+    mask: true
   });
+  
+  try {
+    await fetchRolePermissions(selectedRole.value);
+    
+    uni.showToast({
+      title: '权限数据已刷新',
+      icon: 'success'
+    });
+    
+    // 添加诊断信息
+    console.log('权限刷新结果:');
+    console.log('- 角色ID:', selectedRole.value);
+    console.log('- 角色名称:', selectedRoleName.value);
+    console.log('- 权限数量:', selectedPermissions.value.length);
+    
+    // 如果权限为空且是超级管理员角色，显示警告
+    if (selectedPermissions.value.length === 0 && selectedRoleName.value.includes('超级管理员')) {
+      uni.showModal({
+        title: '权限配置异常',
+        content: '检测到超级管理员角色没有权限配置。这可能会导致管理功能无法正常工作，建议分配所有权限。',
+        confirmText: '分配全部权限',
+        cancelText: '稍后处理',
+        success: (res) => {
+          if (res.confirm) {
+            // 分配所有权限
+            selectAll();
+            // 自动保存
+            setTimeout(() => {
+              saveAssignments();
+            }, 300);
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('刷新权限失败:', error);
+    uni.showToast({
+      title: '权限刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.hideLoading();
+  }
 };
 
 // 获取角色已有权限 - 增加更多错误处理和日志
@@ -460,7 +509,26 @@ const fetchRolePermissions = async (roleId) => {
   
   try {
     console.log('开始获取角色权限, 角色ID:', roleId);
-    const res = await rolePermissionApi.getRolePermissions(roleId);
+    
+    // 尝试不同的API路径
+    let res;
+    try {
+      // 使用正确的API路径获取角色权限
+      res = await rolePermissionApi.getRolePermissions(roleId);
+    } catch (firstError) {
+      console.warn('标准权限路径请求失败，尝试备用路径:', firstError);
+      
+      // 尝试备用API路径
+      try {
+        // 可能的备用路径，例如单数形式的endpoint
+        res = await http.get(`/api/admin/permissions/role/${roleId}`, {}, { withToken: true });
+      } catch (secondError) {
+        console.error('备用权限路径也失败:', secondError);
+        // 继续抛出错误
+        throw secondError;
+      }
+    }
+    
     console.log('获取角色权限响应:', JSON.stringify(res));
     
     // 确保返回的数据格式正确
@@ -471,14 +539,44 @@ const fetchRolePermissions = async (roleId) => {
     } else {
       console.error('角色权限返回格式错误:', res);
       selectedPermissions.value = [];
+      
+      // 显示错误提示
+      uni.showToast({
+        title: '获取角色权限失败，数据格式错误',
+        icon: 'none'
+      });
     }
   } catch (error) {
     console.error('获取角色权限失败:', error);
-    uni.showToast({
-      title: '获取角色权限失败',
-      icon: 'none'
-    });
     selectedPermissions.value = [];
+    
+    // 详细的错误诊断
+    let errorMsg = '获取角色权限失败';
+    if (error.statusCode) {
+      switch (error.statusCode) {
+        case 401:
+          errorMsg = '登录已过期，请重新登录';
+          break;
+        case 403:
+          errorMsg = '没有权限访问，请检查角色权限';
+          break;
+        case 404:
+          errorMsg = '未找到权限数据，请确认角色配置';
+          break;
+        case 500:
+          errorMsg = '服务器内部错误，请联系管理员';
+          break;
+        default:
+          errorMsg = `请求失败(${error.statusCode})，请稍后重试`;
+      }
+    }
+    
+    // 友好的错误提示
+    uni.showToast({
+      title: errorMsg,
+      icon: 'none',
+      duration: 3000
+    });
   } finally {
     loadingAssignments.value = false;
   }
@@ -539,10 +637,13 @@ const fetchPermissions = async (page = 1) => {
   }
 };
 
-// 获取所有权限（不分页）
+// 获取所有权限（不分页）- 改进错误处理和加载逻辑
 const fetchAllPermissions = async () => {
   try {
     console.log('开始获取所有权限数据');
+    
+    // 显示加载状态
+    loadingAssignments.value = true;
     
     // 构造查询参数，获取所有权限
     const params = {
@@ -551,7 +652,18 @@ const fetchAllPermissions = async () => {
     
     console.log('发送请求参数:', JSON.stringify(params));
     
-    const res = await permissionApi.getPermissionList(params);
+    // 尝试两个不同的API路径
+    let res;
+    try {
+      // 先尝试复数形式的API
+      res = await permissionApi.getPermissionList(params);
+    } catch (error) {
+      console.warn('复数形式API请求失败，尝试单数形式:', error);
+      // 如果失败，尝试单数形式的API (如果有的话)
+      // 这里假设你有一个单数形式的API
+      // 如果没有，可以移除这部分代码
+      // res = await permissionApi.getPermission(params);
+    }
     
     console.log('获取所有权限响应:', JSON.stringify(res));
     
@@ -559,35 +671,57 @@ const fetchAllPermissions = async () => {
     if (res && res.data) {
       if (Array.isArray(res.data)) {
         // 直接返回数组形式
-    allPermissions.value = res.data;
+        allPermissions.value = res.data;
       } else if (res.data.list && Array.isArray(res.data.list)) {
         // 返回包含list的对象形式
         allPermissions.value = res.data.list;
       } else {
         console.error('返回数据格式异常:', res);
         allPermissions.value = [];
+        
+        // 显示错误提示
+        uni.showToast({
+          title: '权限数据格式错误',
+          icon: 'none'
+        });
       }
       console.log('解析后所有权限列表:', JSON.stringify(allPermissions.value));
       console.log('权限总数量:', allPermissions.value.length);
     } else {
       console.error('返回数据格式错误:', res);
       allPermissions.value = [];
+      
+      // 显示错误提示
+      uni.showToast({
+        title: '获取权限列表失败',
+        icon: 'none'
+      });
     }
     
     if (allPermissions.value.length === 0) {
       console.warn('警告：获取到的权限列表为空');
+      
+      // 显示空数据提示
+      uni.showToast({
+        title: '没有可用的权限数据',
+        icon: 'none'
+      });
     }
   } catch (error) {
     console.error('获取所有权限失败:', error);
+    allPermissions.value = [];
+    
+    // 友好的错误提示
     uni.showToast({
-      title: '获取权限列表失败',
+      title: '获取权限列表失败，请稍后重试',
       icon: 'none'
     });
-    allPermissions.value = [];
+  } finally {
+    loadingAssignments.value = false;
   }
 };
 
-// 获取所有角色
+// 获取所有角色 - 改进错误处理
 const fetchRoles = async () => {
   try {
     console.log('开始获取角色列表');
@@ -603,6 +737,12 @@ const fetchRoles = async () => {
     } else {
       console.error('返回角色数据格式错误:', res);
       roles.value = [];
+      
+      // 显示错误提示
+      uni.showToast({
+        title: '角色数据格式错误',
+        icon: 'none'
+      });
     }
     
     // 如果没有角色数据，显示提示
@@ -614,11 +754,13 @@ const fetchRoles = async () => {
     }
   } catch (error) {
     console.error('获取角色列表失败:', error);
+    roles.value = [];
+    
+    // 友好的错误提示
     uni.showToast({
-      title: '获取角色列表失败',
+      title: '获取角色列表失败，请稍后重试',
       icon: 'none'
     });
-    roles.value = [];
   }
 };
 
@@ -628,14 +770,28 @@ const changePermissionPage = (page) => {
   fetchPermissions(page);
 };
 
-// 角色选择变化
+// 角色选择变化 - 完善逻辑
 const onRoleChange = (e) => {
   const index = e.detail.value;
   selectedRoleIndex.value = index;
-  selectedRole.value = roleOptions.value[index].value;
+  const selectedRoleValue = roleOptions.value[index].value;
+  
+  // 避免重复加载相同角色
+  if (selectedRole.value === selectedRoleValue) {
+    console.log('角色未变更，无需重新加载权限');
+    return;
+  }
+  
+  selectedRole.value = selectedRoleValue;
+  console.log(`角色选择已变更为: ${selectedRoleValue} (${roleOptions.value[index].label})`);
   
   // 获取该角色的权限
-  fetchRolePermissions(selectedRole.value);
+  if (selectedRole.value) {
+    fetchRolePermissions(selectedRole.value);
+  } else {
+    console.warn('未选择有效角色，无法获取权限');
+    selectedPermissions.value = [];
+  }
 };
 
 // 显示创建权限弹窗
@@ -843,6 +999,43 @@ const saveAssignments = async () => {
   
   try {
     console.log('开始保存权限分配，角色ID:', selectedRole.value, '权限IDs:', selectedPermissions.value);
+    
+    if (selectedPermissions.value.length === 0) {
+      // 提示用户确认是否要清空权限
+      return new Promise((resolve) => {
+        uni.showModal({
+          title: '确认操作',
+          content: '您当前未选择任何权限，这将清空该角色的所有权限。确定要继续吗？',
+          success: async (res) => {
+            if (res.confirm) {
+              // 用户确认清空权限
+              await doSaveAssignments();
+              resolve();
+            } else {
+              savingAssignments.value = false;
+              resolve();
+            }
+          }
+        });
+      });
+    } else {
+      // 直接保存权限
+      await doSaveAssignments();
+    }
+  } catch (error) {
+    console.error('保存权限分配失败:', error);
+    uni.showToast({
+      title: error.message || '保存失败',
+      icon: 'none'
+    });
+  } finally {
+    savingAssignments.value = false;
+  }
+};
+
+// 实际执行保存权限的方法
+const doSaveAssignments = async () => {
+  try {
     const res = await rolePermissionApi.assignPermissions(selectedRole.value, selectedPermissions.value);
     console.log('保存权限分配响应:', JSON.stringify(res));
     
@@ -853,14 +1046,14 @@ const saveAssignments = async () => {
     
     // 刷新角色权限确保前后端数据一致
     await fetchRolePermissions(selectedRole.value);
+    return true;
   } catch (error) {
-    console.error('保存权限分配失败:', error);
+    console.error('执行权限分配失败:', error);
     uni.showToast({
       title: error.message || '保存失败',
       icon: 'none'
     });
-  } finally {
-    savingAssignments.value = false;
+    return false;
   }
 };
 
@@ -888,39 +1081,114 @@ const getRouteParams = () => {
   }
 };
 
-// 初始化
+// 初始化 - 优化逻辑顺序和错误处理
 onMounted(() => {
   console.log('PermissionManagement组件已挂载，开始获取数据');
   
   // 使用简化版的初始化，减少复杂性
-  setTimeout(() => {
-    // 先获取权限列表
-    fetchPermissions().then(() => {
-      console.log('权限列表加载完成');
-      
-      // 再获取所有权限（用于分配）
-      return fetchAllPermissions();
-    }).then(() => {
+  setTimeout(async () => {
+    try {
+      // 先获取所有权限（用于分配）
+      await fetchAllPermissions();
       console.log('所有权限加载完成');
       
       // 再获取角色数据
-      return fetchRoles();
-    }).then(() => {
+      await fetchRoles();
       console.log('角色列表加载完成');
       
-      // 最后处理路由参数
-  setTimeout(() => {
-    getRouteParams();
-      }, 300);
-    }).catch(error => {
+      // 处理路由参数
+      getRouteParams();
+      
+      // 检查权限配置
+      setTimeout(() => {
+        checkSuperAdminPermissions();
+      }, 500);
+    } catch (error) {
       console.error('初始化数据加载失败:', error);
       uni.showToast({
         title: '数据加载失败，请重试',
         icon: 'none'
       });
-    });
+    }
   }, 100);
 });
+
+// 检查超级管理员权限配置
+const checkSuperAdminPermissions = async () => {
+  try {
+    console.log('检查超级管理员权限配置...');
+    
+    // 查找超级管理员角色
+    const superAdminRole = roles.value.find(role => 
+      role.name === '超级管理员' && role.isSystem === '1'
+    );
+    
+    if (!superAdminRole) {
+      console.warn('未找到超级管理员角色，跳过权限检查');
+      return;
+    }
+    
+    console.log('找到超级管理员角色:', superAdminRole);
+    
+    // 获取超级管理员权限
+    loadingAssignments.value = true;
+    
+    try {
+      // 获取超级管理员权限
+      const res = await rolePermissionApi.getRolePermissions(superAdminRole.id);
+      
+      if (res && Array.isArray(res.data)) {
+        const permissions = res.data;
+        console.log('超级管理员权限数量:', permissions.length);
+        
+        // 如果超级管理员权限为空或少于最小阈值（例如5个基础权限）
+        if (permissions.length < 5) {
+          console.warn('超级管理员权限配置不完整，只有', permissions.length, '个权限');
+          
+          // 询问是否自动配置
+          uni.showModal({
+            title: '权限配置检测',
+            content: '检测到超级管理员角色权限配置不完整。为确保系统正常运行，建议为超级管理员分配完整权限。',
+            confirmText: '自动配置',
+            cancelText: '稍后处理',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                // 选择超级管理员角色
+                const index = roles.value.findIndex(r => r.id === superAdminRole.id);
+                if (index !== -1) {
+                  // 设置为当前选中角色
+                  selectedRoleIndex.value = index;
+                  selectedRole.value = superAdminRole.id;
+                  
+                  // 全选所有权限
+                  selectAll();
+                  
+                  // 显示提示
+                  uni.showToast({
+                    title: '已全选权限，请保存',
+                    icon: 'none',
+                    duration: 2000
+                  });
+                  
+                  // 切换到权限分配标签页
+                  activeTab.value = 'assignment';
+                }
+              }
+            }
+          });
+        } else {
+          console.log('超级管理员权限配置正常');
+        }
+      }
+    } catch (error) {
+      console.error('获取超级管理员权限失败:', error);
+    } finally {
+      loadingAssignments.value = false;
+    }
+  } catch (err) {
+    console.error('检查超级管理员权限配置失败:', err);
+  }
+};
 </script>
 
 <style>

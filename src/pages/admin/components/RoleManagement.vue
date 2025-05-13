@@ -278,9 +278,11 @@ const showCreateDialog = () => {
 // 编辑角色
 const editRole = (role) => {
   if (role.isSystem === '1') {
-    uni.showToast({
-      title: '系统内置角色不可编辑',
-      icon: 'none'
+    uni.showModal({
+      title: '操作受限',
+      content: '系统内置角色不可编辑，这是为了确保系统正常运行。如需修改权限，请使用"权限分配"功能。',
+      showCancel: false,
+      confirmText: '我知道了'
     });
     return;
   }
@@ -419,9 +421,11 @@ const toggleRoleStatus = async (role, value) => {
 // 删除角色
 const deleteRole = (role) => {
   if (role.isSystem === '1') {
-    uni.showToast({
-      title: '系统内置角色不可删除',
-      icon: 'none'
+    uni.showModal({
+      title: '操作受限',
+      content: '系统内置角色不可删除，这是为了确保系统正常运行',
+      showCancel: false,
+      confirmText: '我知道了'
     });
     return;
   }
@@ -474,9 +478,89 @@ onMounted(() => {
   console.log('RoleManagement组件已挂载，开始获取角色列表');
   setTimeout(() => {
     // 延迟100ms执行，确保组件完全渲染
-    fetchRoles();
+    fetchRoles().then(() => {
+      // 检查管理员角色配置情况
+      checkAdminRoleAssignment();
+    });
   }, 100);
 });
+
+// 检查管理员角色分配状态并进行修复
+const checkAdminRoleAssignment = async () => {
+  try {
+    console.log('正在检查管理员角色分配状态...');
+    
+    // 获取管理员信息
+    const adminInfo = uni.getStorageSync('admin_info');
+    
+    if (!adminInfo) {
+      console.warn('未找到管理员信息，请确保已正确登录');
+      return;
+    }
+    
+    // 获取管理员角色
+    const res = await roleApi.getAdminRoles(adminInfo.id);
+    console.log('管理员角色信息:', res);
+    
+    // 如果管理员没有角色分配
+    if (!res || !res.data || res.data.length === 0) {
+      console.warn('警告: 管理员没有角色信息，将尝试分配超级管理员角色');
+      
+      // 查找超级管理员角色ID
+      const superAdminRole = roles.value.find(role => 
+        role.name === '超级管理员' && role.isSystem === '1'
+      );
+      
+      if (!superAdminRole) {
+        console.error('未找到超级管理员角色，无法自动修复');
+        uni.showModal({
+          title: '角色配置异常',
+          content: '系统未找到超级管理员角色，请联系技术支持',
+          showCancel: false
+        });
+        return;
+      }
+      
+      // 确认是否分配超级管理员角色
+      uni.showModal({
+        title: '角色配置检测',
+        content: '检测到管理员账户未分配角色，是否分配"超级管理员"角色？',
+        success: async function(res) {
+          if (res.confirm) {
+            try {
+              console.log('正在为管理员分配超级管理员角色...');
+              
+              // 调用API分配角色
+              const result = await roleApi.assignAdminRole(adminInfo.id, superAdminRole.id);
+              
+              if (result && result.code === 200) {
+                uni.showToast({
+                  title: '角色分配成功',
+                  icon: 'success'
+                });
+                
+                // 刷新角色列表
+                fetchRoles();
+              } else {
+                throw new Error('角色分配失败');
+              }
+            } catch (error) {
+              console.error('分配角色失败:', error);
+              uni.showToast({
+                title: '角色分配失败，请手动配置',
+                icon: 'none'
+              });
+            }
+          }
+        }
+      });
+    } else {
+      console.log('管理员已有角色分配，无需修复');
+    }
+  } catch (error) {
+    console.error('检查管理员角色分配状态失败:', error);
+  }
+};
 </script>
 
 <style>
