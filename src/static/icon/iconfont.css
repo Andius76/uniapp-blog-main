@@ -1,0 +1,17 @@
+@font-face {
+  font-family: "iconfont"; /* Project id 4844105 */
+  src: url('~@/static/icon/iconfont.ttf?t=1740978262097') format('truetype');
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-sousuo:before {
+  content: "\e622";
+}
+
