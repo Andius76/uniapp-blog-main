@@ -14,6 +14,11 @@
 // 导入请求工具
 import http from '@/utils/request.js';
 
+// 导入权限API
+import permissionApi from './permission.js';
+// 导入角色-权限关系API
+import rolePermissionApi from './rolePermission.js';
+
 // 用户管理API
 export const userApi = {
   /**
@@ -191,9 +196,14 @@ export const roleApi = {
   }
 };
 
+// 导出权限API
+export { permissionApi, rolePermissionApi };
+
 // 导出默认接口组合
 export default {
   user: userApi,
   article: articleApi,
-  role: roleApi
+  role: roleApi,
+  permission: permissionApi,
+  rolePermission: rolePermissionApi
 }; 
