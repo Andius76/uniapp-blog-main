@@ -171,12 +171,6 @@
           </view>
           
           <view class="preview-content">
-            <!-- 显示摘要 -->
-            <view class="content-block">
-              <text class="content-title">摘要：</text>
-              <text class="content-summary">{{ currentArticle.summary || '无摘要' }}</text>
-            </view>
-            
             <!-- 正文内容 -->
             <view class="content-block">
               <text class="content-title">正文内容：</text>
@@ -422,7 +416,14 @@ const viewArticle = async (article) => {
     // 获取完整的文章详情
     const res = await articleApi.getArticleDetail(article.id);
     if (res && res.data) {
-      currentArticle.value = res.data;
+      // 确保保留原始作者信息
+      const authorName = article.author || article.userName || '';
+      currentArticle.value = {
+        ...res.data,
+        author: res.data.author || authorName,
+        userName: res.data.userName || authorName
+      };
+      console.log('设置预览文章数据:', currentArticle.value);
     }
   } catch (error) {
     console.error('获取文章详情失败:', error);
@@ -627,11 +628,18 @@ onMounted(() => {
 .picker-box {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 8px 12px;
   background-color: #f7f7f7;
   border-radius: 4px;
   font-size: 14px;
   color: #333;
+  min-width: 100px;
+  width: auto;
+}
+
+.picker-box text {
+  margin-right: 5px;
 }
 
 .table-container {
