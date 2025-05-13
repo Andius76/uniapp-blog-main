@@ -179,10 +179,16 @@ const handleSubmit = () => {
 			password: data.formData.password
 		}).then(res => {
 			if (res.code === 200) {
-				// 登录成功，保存token和角色信息到本地存储
+				// 登录成功，保存token和管理员信息到本地存储
 				uni.setStorageSync('admin_token', res.data.token);
-				uni.setStorageSync('admin_info', res.data.user);
-				uni.setStorageSync('admin_roles', res.data.roles);
+				
+				// 保存管理员信息，包括nickname等字段
+				const adminInfo = res.data.user || {};
+				uni.setStorageSync('admin_info', adminInfo);
+				
+				// 保存角色信息
+				const roles = res.data.roles || [];
+				uni.setStorageSync('admin_roles', roles);
 				
 				// 提示登录成功
 				uni.showToast({
@@ -196,19 +202,34 @@ const handleSubmit = () => {
 					uni.redirectTo({
 						url: '/pages/admin/index'
 					});
-				}, 2000);
+				}, 1500);
 			} else {
-				// 登录失败
+				// 登录失败，显示错误信息
+				console.log('登录失败响应:', res);
 				uni.showToast({
-					title: res.msg || '登录失败，请检查账号权限',
+					title: res.msg || '账号或密码错误',
 					icon: 'none',
 					duration: 2000
 				});
 			}
 		}).catch(err => {
 			console.error('登录错误:', err);
+			
+			// 详细记录错误
+			console.log('错误详情:', JSON.stringify(err));
+			
+			// 处理特定状态码
+			let errorMsg = '登录失败，请稍后再试';
+			if (err.statusCode === 403) {
+				errorMsg = '无权限访问，请联系管理员';
+			} else if (err.statusCode === 401) {
+				errorMsg = '账号或密码错误';
+			} else if (err.data && err.data.message) {
+				errorMsg = err.data.message;
+			}
+			
 			uni.showToast({
-				title: '登录失败，请稍后再试',
+				title: errorMsg,
 				icon: 'none',
 				duration: 2000
 			});
