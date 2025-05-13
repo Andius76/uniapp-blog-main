@@ -234,16 +234,6 @@
                 <text class="btn-icon">↑</text>
                 <text>重新发布</text>
               </button>
-              
-              <!-- 调试信息 -->
-              <view class="debug-info">
-                <text>状态值: [{{ currentArticle.status }}], 类型: {{ typeof currentArticle.status }}</text>
-              </view>
-            </view>
-            
-            <!-- 当前可执行的操作提示 -->
-            <view class="action-tips" v-if="getActionTip(currentArticle.status)">
-              <text>{{ getActionTip(currentArticle.status) }}</text>
             </view>
           </view>
         </view>
