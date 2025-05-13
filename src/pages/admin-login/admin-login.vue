@@ -186,9 +186,17 @@ const handleSubmit = () => {
 				const adminInfo = res.data.user || {};
 				uni.setStorageSync('admin_info', adminInfo);
 				
-				// 保存角色信息
+				// 保存角色信息，并打印调试信息
 				const roles = res.data.roles || [];
+				console.log('管理员角色信息:', JSON.stringify(roles));
 				uni.setStorageSync('admin_roles', roles);
+				
+				// 检查是否有ADMIN权限
+				if (roles.includes('ADMIN')) {
+					console.log('当前管理员拥有ADMIN权限');
+				} else {
+					console.warn('警告: 当前管理员没有ADMIN权限');
+				}
 				
 				// 提示登录成功
 				uni.showToast({

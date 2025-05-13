@@ -103,8 +103,97 @@ export const articleApi = {
   }
 };
 
+// 角色管理API
+export const roleApi = {
+  /**
+   * 获取角色列表
+   * @param {Object} params 查询参数
+   * @param {number} params.page 页码
+   * @param {number} params.size 每页数量
+   * @param {string} params.keyword 搜索关键词(可选)
+   * @returns {Promise} 返回Promise对象
+   */
+  getRoleList(params) {
+    console.log('正在请求角色列表，参数:', JSON.stringify(params));
+    return http.get('/api/admin/roles', params)
+      .catch(error => {
+        console.error('获取角色列表失败:', error);
+        // 如果是403错误，可能是权限问题
+        if (error.statusCode === 403) {
+          console.log('权限不足，请检查管理员权限');
+          uni.showToast({
+            title: '权限不足，请尝试重新登录',
+            icon: 'none',
+            duration: 2000
+          });
+          // 可以选择跳转到登录页
+          setTimeout(() => {
+            uni.redirectTo({
+              url: '/pages/admin-login/admin-login'
+            });
+          }, 1500);
+        }
+        return Promise.reject(error);
+      });
+  },
+  
+  /**
+   * 获取角色详情
+   * @param {number} id 角色ID
+   * @returns {Promise} 返回Promise对象
+   */
+  getRoleDetail(id) {
+    return http.get(`/api/admin/roles/${id}`);
+  },
+  
+  /**
+   * 添加角色
+   * @param {Object} role 角色信息
+   * @param {string} role.name 角色名称
+   * @param {string} role.description 角色描述
+   * @param {string} role.status 角色状态：0-禁用，1-启用
+   * @returns {Promise} 返回Promise对象
+   */
+  addRole(role) {
+    return http.post('/api/admin/roles', role);
+  },
+  
+  /**
+   * 更新角色
+   * @param {number} id 角色ID
+   * @param {Object} role 角色信息
+   * @param {string} role.name 角色名称
+   * @param {string} role.description 角色描述
+   * @param {string} role.status 角色状态：0-禁用，1-启用
+   * @returns {Promise} 返回Promise对象
+   */
+  updateRole(id, role) {
+    return http.put(`/api/admin/roles/${id}`, role);
+  },
+  
+  /**
+   * 更新角色状态
+   * @param {number} id 角色ID
+   * @param {string} status 角色状态：0-禁用，1-启用
+   * @returns {Promise} 返回Promise对象
+   */
+  updateRoleStatus(id, status) {
+    return http.put(`/api/admin/roles/${id}/status`, { status });
+  },
+  
+  /**
+   * 删除角色
+   * @param {number} id 角色ID
+   * @returns {Promise} 返回Promise对象
+   */
+  deleteRole(id) {
+    return http.delete(`/api/admin/roles/${id}`);
+  }
+};
+
 // 导出默认接口组合
 export default {
   user: userApi,
-  article: articleApi
+  article: articleApi,
+  role: roleApi
 }; 

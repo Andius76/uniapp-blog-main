@@ -41,7 +41,9 @@ const config = {
  * @returns {string} token值
  */
 function getToken() {
-	return uni.getStorageSync('admin_token') || '';
+	const token = uni.getStorageSync('admin_token') || '';
+	console.log('获取admin_token: ' + (token ? token.substring(0, 20) + '...' : '无'));
+	return token;
 }
 
 /**
@@ -69,6 +71,10 @@ function requestInterceptor(options) {
 		const token = getToken();
 		if (token) {
 			options.header['Authorization'] = `Bearer ${token}`;
+			console.log('请求URL: ' + options.url);
+			console.log('请求头Authorization: Bearer ' + token.substring(0, 20) + '...');
+		} else {
+			console.warn('警告: 管理员接口请求未携带Token');
 		}
 	}
 
@@ -113,6 +119,7 @@ function responseInterceptor(response) {
 				icon: 'none',
 				duration: 2000
 			});
+			console.error(`业务错误 (${data.code}): ${data.message || '未知错误'}`);
 			return Promise.reject(data);
 		}
 	}
@@ -142,11 +149,44 @@ function responseInterceptor(response) {
 
 	// 403: 权限不足
 	if (statusCode === 403) {
+		console.error('权限不足 (403):', data);
+		
+		// 检查本地存储的Token和角色信息
+		const token = uni.getStorageSync('admin_token');
+		const roles = uni.getStorageSync('admin_roles');
+		console.log('当前Token:', token ? (token.substring(0, 10) + '...') : '无');
+		console.log('当前角色:', roles ? JSON.stringify(roles) : '无');
+		
 		uni.showToast({
 			title: '权限不足，无法访问该资源',
 			icon: 'none',
 			duration: 2000
 		});
+		
+		// 如果确实已登录但仍然遇到403，尝试重新登录刷新权限
+		if (token) {
+			setTimeout(() => {
+				uni.showModal({
+					title: '提示',
+					content: '您的权限不足或已过期，是否重新登录?',
+					confirmText: '重新登录',
+					success: function(res) {
+						if (res.confirm) {
+							// 清除本地存储
+							uni.removeStorageSync('admin_token');
+							uni.removeStorageSync('admin_info');
+							uni.removeStorageSync('admin_roles');
+							
+							// 跳转到登录页
+							uni.redirectTo({
+								url: '/pages/admin-login/admin-login'
+							});
+						}
+					}
+				});
+			}, 500);
+		}
+		
 		return Promise.reject(data);
 	}
 
