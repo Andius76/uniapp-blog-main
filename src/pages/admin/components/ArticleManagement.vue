@@ -34,6 +34,7 @@
         <view class="th" style="width: 150px;">发布时间</view>
         <view class="th" style="width: 60px;">浏览量</view>
         <view class="th" style="width: 60px;">点赞数</view>
+        <view class="th" style="width: 60px;">评论数</view>
         <view class="th" style="width: 80px;">状态</view>
         <view class="th" style="width: 180px;">操作</view>
       </view>
@@ -55,8 +56,9 @@
           </view>
           <view class="td" style="width: 100px;">{{ article.author || article.userName }}</view>
           <view class="td" style="width: 150px;">{{ formatDate(article.createTime) }}</view>
-          <view class="td" style="width: 60px;">{{ article.viewCount }}</view>
-          <view class="td" style="width: 60px;">{{ article.likeCount }}</view>
+          <view class="td" style="width: 60px;">{{ article.viewCount || 0 }}</view>
+          <view class="td" style="width: 60px;">{{ article.likeCount || 0 }}</view>
+          <view class="td" style="width: 60px;">{{ article.commentCount || 0 }}</view>
           <view class="td" style="width: 80px;">
             <text :class="['status-badge', getStatusClass(article.status)]">
               {{ getStatusText(article.status) }}
@@ -362,8 +364,45 @@ const fetchArticles = async (page = 1) => {
       // - likeCount: 点赞数
       // - commentCount: 评论数
       // - status: 状态 (0-草稿，1-已发布，2-已下架)
-      articles.value = Array.isArray(res.data.data) ? res.data.data : [];
+      
+      // 处理返回的数据，确保计数字段都有值
+      let articleData = Array.isArray(res.data.data) ? res.data.data : [];
+      
+      // 修正数据，确保浏览量、点赞数和评论数字段有值
+      articleData = articleData.map(article => {
+        // 检查并转换可能的字符串类型数值为数字
+        const viewCount = article.viewCount !== undefined ? 
+          (isNaN(Number(article.viewCount)) ? 0 : Number(article.viewCount)) : 0;
+        
+        const likeCount = article.likeCount !== undefined ? 
+          (isNaN(Number(article.likeCount)) ? 0 : Number(article.likeCount)) : 0;
+        
+        const commentCount = article.commentCount !== undefined ? 
+          (isNaN(Number(article.commentCount)) ? 0 : Number(article.commentCount)) : 0;
+        
+        // 检查可能的下划线命名方式
+        const view_count = article.view_count !== undefined ? 
+          (isNaN(Number(article.view_count)) ? 0 : Number(article.view_count)) : 0;
+        
+        const like_count = article.like_count !== undefined ? 
+          (isNaN(Number(article.like_count)) ? 0 : Number(article.like_count)) : 0;
+        
+        const comment_count = article.comment_count !== undefined ? 
+          (isNaN(Number(article.comment_count)) ? 0 : Number(article.comment_count)) : 0;
+        
+        // 合并处理后的值
+        return {
+          ...article,
+          viewCount: viewCount || view_count,
+          likeCount: likeCount || like_count,
+          commentCount: commentCount || comment_count
+        };
+      });
+      
+      articles.value = articleData;
       total.value = res.data.total || 0;
+      
+      console.log('处理后的文章数据:', articles.value);
     } else {
       console.error('返回数据格式错误:', res);
       articles.value = [];
