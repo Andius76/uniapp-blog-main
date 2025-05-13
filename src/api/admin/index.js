@@ -12,7 +12,7 @@
  */
 
 // 导入请求工具
-import http from '@/utils/request.js';
+import Request from '@/utils/request.js';
 
 // 导入权限API
 import permissionApi from './permission.js';
@@ -31,7 +31,7 @@ export const userApi = {
    * @returns {Promise} 返回Promise对象
    */
   getUserList(params) {
-    return http.get('/api/admin/users', params);
+    return Request.get('/api/admin/users', { params });
   },
   
   /**
@@ -40,7 +40,7 @@ export const userApi = {
    * @returns {Promise} 返回Promise对象
    */
   getUserDetail(id) {
-    return http.get(`/api/admin/users/${id}`);
+    return Request.get(`/api/admin/users/${id}`);
   },
   
   /**
@@ -50,7 +50,7 @@ export const userApi = {
    * @returns {Promise} 返回Promise对象
    */
   updateUserStatus(id, status) {
-    return http.put(`/api/admin/users/${id}/status`, { status });
+    return Request.put(`/api/admin/users/${id}/status`, { status });
   },
   
   /**
@@ -59,7 +59,7 @@ export const userApi = {
    * @returns {Promise} 返回Promise对象
    */
   deleteUser(id) {
-    return http.delete(`/api/admin/users/${id}`);
+    return Request.delete(`/api/admin/users/${id}`);
   }
 };
 
@@ -75,7 +75,7 @@ export const articleApi = {
    * @returns {Promise} 返回Promise对象
    */
   getArticleList(params) {
-    return http.get('/api/admin/articles', params);
+    return Request.get('/api/admin/articles', { params });
   },
   
   /**
@@ -84,7 +84,7 @@ export const articleApi = {
    * @returns {Promise} 返回Promise对象
    */
   getArticleDetail(id) {
-    return http.get(`/api/admin/articles/${id}`);
+    return Request.get(`/api/admin/articles/${id}`);
   },
   
   /**
@@ -95,7 +95,7 @@ export const articleApi = {
    */
   updateArticleStatus(id, status) {
     console.log(`更新文章${id}的状态为${status}`);
-    return http.put(`/api/admin/articles/${id}/status?status=${status}`);
+    return Request.put(`/api/admin/articles/${id}/status?status=${status}`);
   },
   
   /**
@@ -104,7 +104,7 @@ export const articleApi = {
    * @returns {Promise} 返回Promise对象
    */
   deleteArticle(id) {
-    return http.delete(`/api/admin/articles/${id}`);
+    return Request.delete(`/api/admin/articles/${id}`);
   }
 };
 
@@ -120,7 +120,7 @@ export const roleApi = {
    */
   getRoleList(params) {
     console.log('正在请求角色列表，参数:', JSON.stringify(params));
-    return http.get('/api/admin/roles', params)
+    return Request.get('/api/admin/roles', { params })
       .catch(error => {
         console.error('获取角色列表失败:', error);
         // 如果是403错误，可能是权限问题
@@ -148,7 +148,7 @@ export const roleApi = {
    * @returns {Promise} 返回Promise对象
    */
   getRoleDetail(id) {
-    return http.get(`/api/admin/roles/${id}`);
+    return Request.get(`/api/admin/roles/${id}`);
   },
   
   /**
@@ -160,7 +160,7 @@ export const roleApi = {
    * @returns {Promise} 返回Promise对象
    */
   addRole(role) {
-    return http.post('/api/admin/roles', role);
+    return Request.post('/api/admin/roles', role);
   },
   
   /**
@@ -173,7 +173,7 @@ export const roleApi = {
    * @returns {Promise} 返回Promise对象
    */
   updateRole(id, role) {
-    return http.put(`/api/admin/roles/${id}`, role);
+    return Request.put(`/api/admin/roles/${id}`, role);
   },
   
   /**
@@ -183,7 +183,7 @@ export const roleApi = {
    * @returns {Promise} 返回Promise对象
    */
   updateRoleStatus(id, status) {
-    return http.put(`/api/admin/roles/${id}/status`, { status });
+    return Request.put(`/api/admin/roles/${id}/status`, { status });
   },
   
   /**
@@ -192,7 +192,7 @@ export const roleApi = {
    * @returns {Promise} 返回Promise对象
    */
   deleteRole(id) {
-    return http.delete(`/api/admin/roles/${id}`);
+    return Request.delete(`/api/admin/roles/${id}`);
   },
 
   /**
@@ -202,7 +202,7 @@ export const roleApi = {
    */
   getAdminRoles(adminId) {
     console.log('获取管理员角色，管理员ID:', adminId);
-    return http.get(`/api/admin/adminRoles/${adminId}`);
+    return Request.get(`/api/admin/adminRoles/${adminId}`);
   },
   
   /**
@@ -213,12 +213,54 @@ export const roleApi = {
    */
   assignAdminRole(adminId, roleId) {
     console.log('为管理员分配角色，管理员ID:', adminId, '角色ID:', roleId);
-    return http.post(`/api/admin/adminRoles`, { adminId, roleId });
+    return Request.post(`/api/admin/adminRoles`, { adminId, roleId });
+  },
+
+  /**
+   * 获取角色拥有的权限
+   * @param {number} roleId 角色ID
+   * @returns {Promise} 返回Promise对象
+   */
+  getRolePermissions(roleId) {
+    return Request.get(`/api/admin/roles/${roleId}/permissions`);
+  },
+  
+  /**
+   * 给角色分配权限
+   * @param {number} roleId 角色ID
+   * @param {Array} permissionIds 权限ID数组
+   * @returns {Promise} 返回Promise对象
+   */
+  assignPermissions(roleId, permissionIds) {
+    return Request.post(`/api/admin/roles/${roleId}/permissions`, {
+      permissionIds
+    });
   }
 };
 
 // 导出权限API
 export { permissionApi, rolePermissionApi };
+
+// 用户角色相关API
+export const userRoleApi = {
+  // 获取用户列表（带角色信息）
+  getUserList(params) {
+    return Request.get('/api/admin/users/roles', { params }, { withToken: true });
+  },
+  
+  // 获取用户拥有的角色
+  getUserRoles(userId) {
+    return Request.get(`/api/admin/users/roles/${userId}`, {}, { withToken: true });
+  },
+  
+  // 给用户分配角色
+  assignUserRoles(userId, roleIds) {
+    console.log('分配用户角色，用户ID:', userId, '角色IDs:', roleIds);
+    return Request.post(`/api/admin/users/roles/${userId}`, {
+      roleIds
+    }, { withToken: true });
+  }
+};
 
 // 导出默认接口组合
 export default {
@@ -226,5 +268,6 @@ export default {
   article: articleApi,
   role: roleApi,
   permission: permissionApi,
-  rolePermission: rolePermissionApi
+  rolePermission: rolePermissionApi,
+  userRole: userRoleApi
 }; 

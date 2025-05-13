@@ -236,11 +236,20 @@ const assignRole = async (user) => {
   
   // 获取用户当前角色
   try {
+    console.log('获取用户角色, 用户ID:', user.id);
     const res = await userRoleApi.getUserRoles(user.id);
+    console.log('获取用户角色成功:', res);
     selectedRoles.value = res.data ? res.data.map(role => role.id) : [];
   } catch (error) {
     console.error('获取用户角色失败:', error);
+    // 回退到使用页面已有的角色数据
     selectedRoles.value = user.roles ? user.roles.map(role => role.id) : [];
+    
+    // 显示错误信息
+    uni.showToast({
+      title: '获取用户角色失败，已使用本地数据',
+      icon: 'none'
+    });
   }
   
   // 打开弹窗
@@ -249,6 +258,7 @@ const assignRole = async (user) => {
 
 // 处理角色选择变化
 const handleRoleChange = (e) => {
+  console.log('角色选择变更:', e.detail.value);
   // 转换为数字数组
   selectedRoles.value = e.detail.value.map(id => parseInt(id));
 };
@@ -258,6 +268,7 @@ const saveUserRoles = async () => {
   loading.value = true;
   
   try {
+    console.log('保存用户角色, 用户ID:', currentUser.id, '角色IDs:', selectedRoles.value);
     await userRoleApi.assignUserRoles(currentUser.id, selectedRoles.value);
     
     // 更新本地数据
@@ -271,10 +282,20 @@ const saveUserRoles = async () => {
     closeDialog();
   } catch (error) {
     console.error('保存用户角色失败:', error);
-    uni.showToast({
-      title: error.message || '保存失败',
-      icon: 'none'
-    });
+    
+    // 检查权限问题
+    if (error.statusCode === 403) {
+      uni.showModal({
+        title: '权限不足',
+        content: '您没有分配用户角色的权限，请联系管理员',
+        showCancel: false
+      });
+    } else {
+      uni.showToast({
+        title: error.message || '保存失败',
+        icon: 'none'
+      });
+    }
   } finally {
     loading.value = false;
   }
