@@ -55,7 +55,7 @@
             <text class="article-title">{{ article.title }}</text>
           </view>
           <view class="td" style="width: 100px;">{{ article.author || article.userName }}</view>
-          <view class="td" style="width: 150px;">{{ article.createTime || '暂无时间' }}</view>
+          <view class="td" style="width: 150px;">{{ formatDate(article.createTime) }}</view>
           <view class="td" style="width: 60px;">{{ article.viewCount || 0 }}</view>
           <view class="td" style="width: 60px;">{{ article.likeCount || 0 }}</view>
           <view class="td" style="width: 60px;">{{ article.commentCount || 0 }}</view>
@@ -144,7 +144,7 @@
                 <text>作者：{{ currentArticle.author || currentArticle.userName }}</text>
               </view>
               <view class="preview-time">
-                <text>发布时间：{{ currentArticle.createTime || '暂无时间' }}</text>
+                <text>发布时间：{{ formatDate(currentArticle.createTime) }}</text>
               </view>
               <view class="preview-stats">
                 <text>浏览量：{{ currentArticle.viewCount || 0 }}</text>
@@ -303,47 +303,61 @@ const loadingText = {
 
 // 格式化日期
 const formatDate = (dateStr) => {
-  if (!dateStr) return '未知';
+  if (!dateStr) return '暂无时间';
   
   try {
-    // 检查是否是有效的日期字符串
-    const isValid = !isNaN(new Date(dateStr).getTime());
-    
-    // 如果是有效的日期字符串且包含空格（日期和时间分开）
-    if (isValid && dateStr.includes(' ')) {
-      const parts = dateStr.split(' ');
-      const date = parts[0];
-      const time = parts[1].length >= 8 ? parts[1] : parts[1] + ':00'; // 确保有秒
-      return `${date}/${time}`;
-    }
-    
-    // 如果只有日期部分（没有时间）
-    if (isValid && !dateStr.includes(' ')) {
-      const date = new Date(dateStr);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}/00:00:00`;
-    }
-    
-    // 如果是时间戳
-    if (!isNaN(dateStr) && String(dateStr).length >= 10) {
+    // 处理时间戳（数字或者字符串数字）
+    if (!isNaN(Number(dateStr))) {
       const timestamp = Number(dateStr);
-      const date = new Date(timestamp * (String(dateStr).length === 10 ? 1000 : 1));
+      // 判断是秒级还是毫秒级时间戳
+      const date = new Date(timestamp * (String(timestamp).length === 10 ? 1000 : 1));
+      
+      if (isNaN(date.getTime())) return dateStr; // 无效日期则返回原始值
+      
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
-      return `${year}-${month}-${day}/${hours}:${minutes}:${seconds}`;
+      
+      return `${year}-${month}-${day} ${hours}:${minutes}`;
     }
     
-    // 其他情况，返回原始值
+    // 处理日期字符串
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+    
+    // 如果原始字符串已经是格式化的日期时间
+    // 如：2023-05-15 14:30:25，只保留到分钟
+    if (typeof dateStr === 'string' && dateStr.match(/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/)) {
+      // 匹配日期部分 YYYY-MM-DD 或 YYYY/MM/DD
+      const dateMatch = dateStr.match(/^(\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
+      if (dateMatch) {
+        const datePart = dateMatch[1].replace(/\//g, '-'); // 统一使用-分隔符
+        
+        // 尝试匹配时间部分 HH:MM 或 HH:MM:SS
+        const timeMatch = dateStr.match(/(\d{1,2}:\d{1,2})/);
+        if (timeMatch) {
+          return `${datePart} ${timeMatch[1]}`;
+        }
+        
+        return datePart; // 如果没有时间部分，只返回日期
+      }
+    }
+    
+    // 无法格式化时返回原始值
     return dateStr;
   } catch (error) {
     console.error('日期格式化错误:', error, dateStr);
-    return dateStr || '未知';
+    return dateStr;
   }
 };
 
