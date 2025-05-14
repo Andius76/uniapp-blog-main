@@ -35,11 +35,15 @@
                 v-for="(menu, index) in getCategoryMenus(category)" 
                 :key="menu.id" 
                 class="menu-item"
-                :class="{ active: currentMenu === menu.id }"
+                :class="{ 
+                  active: currentMenu === menu.id,
+                  disabled: !hasPermission(menu)
+                }"
                 @click="handleMenuClick(menu)"
               >
-                <uni-icons :type="menu.icon" size="18" :color="currentMenu === menu.id ? '#4361ee' : '#666'"></uni-icons>
-                <text class="menu-text">{{ menu.name }}</text>
+                <uni-icons :type="menu.icon" size="18" :color="currentMenu === menu.id ? '#4361ee' : (hasPermission(menu) ? '#666' : '#aaa')"></uni-icons>
+                <text class="menu-text" :style="{ color: hasPermission(menu) ? '' : '#aaa' }">{{ menu.name }}</text>
+                <text v-if="!hasPermission(menu)" class="lock-icon">🔒</text>
               </view>
             </view>
           </block>
@@ -162,7 +166,54 @@ const menuList = reactive([
 ]);
 
 // 当前用户角色列表 - 默认包含所有角色便于调试
-const userRoles = ref(['SUPER_ADMIN', 'ADMIN']);
+const userRoles = ref(['ADMIN']);
+
+// 判断是否为超级管理员
+const isSuperAdmin = computed(() => {
+  // 检查多种可能的超级管理员标识
+  return userRoles.value.some(role => {
+    // 检查角色名称
+    if (typeof role === 'string') {
+      const roleName = role.toUpperCase();
+      return roleName.includes('超级管理员') || 
+             roleName === 'SUPER_ADMIN' || 
+             roleName === 'ROLE_超级管理员';
+    }
+    return false;
+  });
+});
+
+// 判断是否有权限访问某个菜单
+const hasPermission = (menu) => {
+  // 如果是用户管理，检查是否有user:view或user:manage权限
+  if (menu.id === 'userManagement') {
+    return userRoles.value.some(role => {
+      if (typeof role === 'string') {
+        return role.includes('user:view') || 
+               role.includes('user:manage') ||
+               role === 'ADMIN' ||
+               role === 'ROLE_内容管理员';
+      }
+      return false;
+    });
+  }
+  
+  // 如果是文章管理，检查是否有article:view或article:manage权限
+  if (menu.id === 'articleManagement') {
+    return userRoles.value.some(role => {
+      if (typeof role === 'string') {
+        return role.includes('article:view') || 
+               role.includes('article:manage') ||
+               role === 'ADMIN' ||
+               role === 'ROLE_内容管理员';
+      }
+      return false;
+    });
+  }
+  
+  // 其他功能需要超级管理员权限
+  return isSuperAdmin.value;
+};
 
 // 过滤后的菜单
 const filteredMenuList = computed(() => {
@@ -325,43 +376,106 @@ const init = () => {
     const rolesData = uni.getStorageSync('admin_roles');
     console.log('原始角色数据:', rolesData);
     
+    // 清空角色列表，准备重新填充
+    userRoles.value = [];
+    
     if (rolesData) {
       try {
-        const roles = typeof rolesData === 'string' ? JSON.parse(rolesData) : rolesData;
-        
-        if (Array.isArray(roles) && roles.length > 0) {
-          // 提取角色名称并转换为大写
-          const roleNames = roles.map(role => {
-            const name = role.name || role.roleName || '';
-            return name.toUpperCase();
-          }).filter(name => name);
-          
-          console.log('提取的角色名称:', roleNames);
-          
-          // 转换为系统使用的角色代码
-          if (roleNames.includes('超级管理员') || roleNames.includes('SUPER_ADMIN')) {
-            userRoles.value = ['SUPER_ADMIN', 'ADMIN'];
-          } else if (roleNames.includes('内容管理员') || roleNames.includes('ADMIN')) {
-            userRoles.value = ['ADMIN'];
-          } else {
-            // 保持默认角色确保能看到菜单
-            console.log('未找到匹配的角色，使用默认角色');
+        // 处理不同格式的角色数据
+        if (typeof rolesData === 'string') {
+          try {
+            // 尝试解析JSON字符串
+            const parsedRoles = JSON.parse(rolesData);
+            
+            // 如果是数组，直接添加
+            if (Array.isArray(parsedRoles)) {
+              userRoles.value = [...userRoles.value, ...parsedRoles];
+            } 
+            // 如果是对象，尝试提取roles属性
+            else if (parsedRoles && typeof parsedRoles === 'object') {
+              if (Array.isArray(parsedRoles.roles)) {
+                userRoles.value = [...userRoles.value, ...parsedRoles.roles];
+              } else {
+                // 将对象中的所有键值对作为角色
+                Object.keys(parsedRoles).forEach(key => {
+                  userRoles.value.push(parsedRoles[key]);
+                });
+              }
+            }
+          } catch (e) {
+            // 如果解析失败，当作单个角色名称处理
+            console.warn('角色数据解析失败，作为单个角色处理:', rolesData);
+            userRoles.value.push(rolesData);
           }
-        } else {
-          console.log('角色数据不是数组或为空，使用默认角色');
+        } 
+        // 如果是数组，直接使用
+        else if (Array.isArray(rolesData)) {
+          userRoles.value = [...userRoles.value, ...rolesData];
+        }
+        // 如果是其他类型，尝试提取有用信息
+        else if (rolesData && typeof rolesData === 'object') {
+          // 尝试提取roles属性
+          if (Array.isArray(rolesData.roles)) {
+            userRoles.value = [...userRoles.value, ...rolesData.roles];
+          } else {
+            // 将对象中的所有键值对作为角色
+            Object.keys(rolesData).forEach(key => {
+              if (rolesData[key]) {
+                userRoles.value.push(rolesData[key]);
+              }
+            });
+          }
+        }
+        
+        // 提取并处理角色数据
+        userRoles.value = userRoles.value.map(role => {
+          // 如果是字符串，直接返回
+          if (typeof role === 'string') {
+            return role;
+          }
+          // 如果是对象，提取name属性
+          else if (role && typeof role === 'object') {
+            if (role.name) return role.name;
+            if (role.roleName) return role.roleName;
+            if (role.code) return role.code;
+            // 返回对象中的第一个非空字符串属性
+            for (const key in role) {
+              if (typeof role[key] === 'string' && role[key]) {
+                return role[key];
+              }
+            }
+          }
+          // 其他情况返回空字符串，过滤掉
+          return '';
+        }).filter(role => role); // 过滤掉空值
+        
+        console.log('处理后的角色列表:', userRoles.value);
+        
+        // 确保至少有ADMIN角色
+        if (!userRoles.value.includes('ADMIN')) {
+          userRoles.value.push('ADMIN');
         }
       } catch (e) {
         console.error('处理角色数据出错:', e);
+        // 出错时确保用户有基本角色
+        userRoles.value = ['ADMIN'];
       }
     } else {
       console.log('未找到角色数据，使用默认角色');
+      userRoles.value = ['ADMIN'];
     }
     
     console.log('最终使用的角色:', userRoles.value);
     
     // 默认选中第一个有权限的菜单
     if (filteredMenuList.value.length > 0) {
-      currentMenu.value = filteredMenuList.value[0].id;
+      // 尝试找到第一个有权限访问的菜单
+      const firstPermittedMenu = filteredMenuList.value.find(menu => hasPermission(menu));
+      if (firstPermittedMenu) {
+        currentMenu.value = firstPermittedMenu.id;
+      } else {
+        currentMenu.value = filteredMenuList.value[0].id;
+      }
       console.log('默认选中菜单:', currentMenu.value);
     }
   } catch (e) {
@@ -387,6 +501,15 @@ onBeforeUnmount(() => {
 
 // 处理菜单点击
 const handleMenuClick = (menu) => {
+  // 检查是否有权限点击此菜单
+  if (!hasPermission(menu)) {
+    uni.showToast({
+      title: '您没有权限访问此功能',
+      icon: 'none'
+    });
+    return;
+  }
+  
   currentMenu.value = menu.id;
   // 在移动端可能需要关闭侧边栏
   if (window.innerWidth < 768) {
@@ -566,15 +689,34 @@ const getCategoryMenus = (category) => {
   color: #4361ee;
 }
 
-.sidebar .menu-text {
-  margin-left: 8px;
-  color: #333;
-  font-size: 13px;
+.sidebar .menu-item.disabled {
+  background-color: #f5f7fa;
+  color: #aaa;
+  cursor: not-allowed;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar .menu-item.disabled:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
 }
 
 .sidebar .menu-item.active .menu-text {
   color: #4361ee;
   font-weight: 500;
+}
+
+.sidebar .menu-text {
+  margin-left: 8px;
+  color: #333;
+  font-size: 13px;
 }
 
 /* 内容区域 */
@@ -785,5 +927,11 @@ const getCategoryMenus = (category) => {
   margin-bottom: 5px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.lock-icon {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #aaa;
 }
 </style> 
