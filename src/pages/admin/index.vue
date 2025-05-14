@@ -24,7 +24,9 @@
       <!-- 侧边栏导航 -->
       <view class="sidebar-container">
         <scroll-view class="sidebar" scroll-y>
-          <view class="debug-info">菜单数: {{filteredMenuList.length}}</view>
+          <view v-if="userInfo.email" class="user-role-info">
+            <text>{{ isSuperAdmin ? '超级管理员' : '管理员' }}</text>
+          </view>
           
           <!-- 按照分类分组显示菜单 -->
           <block v-for="category in menuCategories" :key="category">
@@ -37,13 +39,21 @@
                 class="menu-item"
                 :class="{ 
                   active: currentMenu === menu.id,
-                  disabled: !hasPermission(menu)
+                  disabled: !canAccessMenu(menu)
                 }"
                 @click="handleMenuClick(menu)"
               >
-                <uni-icons :type="menu.icon" size="18" :color="currentMenu === menu.id ? '#4361ee' : (hasPermission(menu) ? '#666' : '#aaa')"></uni-icons>
-                <text class="menu-text" :style="{ color: hasPermission(menu) ? '' : '#aaa' }">{{ menu.name }}</text>
-                <text v-if="!hasPermission(menu)" class="lock-icon">🔒</text>
+                <uni-icons :type="menu.icon" size="18" :color="getMenuIconColor(menu)"></uni-icons>
+                <text class="menu-text">{{ menu.name }}</text>
+                
+                <!-- 锁定图标 -->
+                <uni-icons 
+                  v-if="!canAccessMenu(menu)" 
+                  type="locked" 
+                  size="14" 
+                  color="#999"
+                  class="lock-icon"
+                ></uni-icons>
               </view>
             </view>
           </block>
@@ -80,7 +90,8 @@ import AdminRoleAssignment from '@/pages/admin/components/AdminRoleAssignment.vu
 // 用户信息
 const userInfo = ref({
   nickname: '管理员',
-  avatar: '/static/images/avatar.png'
+  avatar: '/static/images/avatar.png',
+  email: ''
 });
 
 // 用户菜单显示状态
@@ -165,67 +176,60 @@ const menuList = reactive([
   }
 ]);
 
-// 当前用户角色列表 - 默认包含所有角色便于调试
-const userRoles = ref(['ADMIN']);
+// 当前用户角色列表
+const userRoles = ref([]);
+const userPermissions = ref([]);
 
-// 判断是否为超级管理员
+// 判断是否是超级管理员
 const isSuperAdmin = computed(() => {
-  // 检查多种可能的超级管理员标识
-  return userRoles.value.some(role => {
-    // 检查角色名称
-    if (typeof role === 'string') {
-      const roleName = role.toUpperCase();
-      return roleName.includes('超级管理员') || 
-             roleName === 'SUPER_ADMIN' || 
-             roleName === 'ROLE_超级管理员';
-    }
-    return false;
-  });
+  // 检查可能的超级管理员角色标识
+  return userRoles.value.some(role => 
+    role === 'ROLE_超级管理员' || 
+    role === 'SUPER_ADMIN' || 
+    role === '超级管理员');
 });
 
-// 判断是否有权限访问某个菜单
-const hasPermission = (menu) => {
-  // 如果是用户管理，检查是否有user:view或user:manage权限
-  if (menu.id === 'userManagement') {
-    return userRoles.value.some(role => {
-      if (typeof role === 'string') {
-        return role.includes('user:view') || 
-               role.includes('user:manage') ||
-               role === 'ADMIN' ||
-               role === 'ROLE_内容管理员';
-      }
-      return false;
-    });
+// 检查是否可以访问菜单项
+const canAccessMenu = (menu) => {
+  console.log('检查菜单访问权限:', menu.name, '用户角色:', userRoles.value);
+  
+  // 调试输出
+  const hasRole = userRoles.value.some(role => menu.roles.includes(role));
+  console.log(`菜单[${menu.name}]权限检查:`, hasRole);
+  
+  // 超级管理员可以访问所有菜单
+  if (isSuperAdmin.value) {
+    console.log('超级管理员可访问所有菜单');
+    return true;
   }
   
-  // 如果是文章管理，检查是否有article:view或article:manage权限
-  if (menu.id === 'articleManagement') {
-    return userRoles.value.some(role => {
-      if (typeof role === 'string') {
-        return role.includes('article:view') || 
-               role.includes('article:manage') ||
-               role === 'ADMIN' ||
-               role === 'ROLE_内容管理员';
-      }
-      return false;
-    });
+  // 处理管理员角色
+  const isAdmin = userRoles.value.some(role => 
+    role === 'ADMIN' || 
+    role === 'ROLE_内容管理员' || 
+    role === '内容管理员');
+  
+  // 管理员可以访问的基础菜单
+  if (isAdmin && menu.roles.includes('ADMIN')) {
+    console.log('管理员可访问常规菜单:', menu.name);
+    return true;
   }
   
-  // 其他功能需要超级管理员权限
-  return isSuperAdmin.value;
+  // 检查具体权限
+  return menu.roles.some(role => userRoles.value.includes(role));
 };
 
-// 过滤后的菜单
+// 获取菜单图标颜色
+const getMenuIconColor = (menu) => {
+  if (!canAccessMenu(menu)) return '#999'; // 灰色图标表示无法访问
+  if (currentMenu.value === menu.id) return '#4361ee'; // 选中状态
+  return '#666'; // 默认状态
+};
+
+// 过滤后的菜单（显示所有菜单，但部分功能禁用）
 const filteredMenuList = computed(() => {
   console.log('当前用户角色:', userRoles.value);
-  const filtered = menuList.filter(menu => {
-    // 判断当前用户是否有权限查看该菜单
-    const hasPermission = menu.roles.some(role => userRoles.value.includes(role));
-    console.log(`菜单 ${menu.name} 权限检查:`, hasPermission);
-    return hasPermission;
-  });
-  console.log('过滤后的菜单列表:', filtered);
-  return filtered.length > 0 ? filtered : menuList; // 如果过滤后为空，显示所有菜单
+  return menuList;
 });
 
 // 当前菜单名称
@@ -347,6 +351,58 @@ const handleGlobalClick = (e) => {
   }
 };
 
+// 解析角色信息
+const parseUserRoles = (rolesData) => {
+  try {
+    console.log('解析角色数据:', rolesData);
+    let roles = [];
+    
+    // 从Token获取的权限列表(字符串数组)
+    if (Array.isArray(rolesData)) {
+      // 例如 ["USER", "ADMIN", "ROLE_超级管理员", "user:view", ...]
+      roles = rolesData.filter(role => !!role);
+    } 
+    // 存储的对象数组格式
+    else if (typeof rolesData === 'string') {
+      try {
+        const parsed = JSON.parse(rolesData);
+        if (Array.isArray(parsed)) {
+          roles = parsed.map(role => {
+            // 处理对象格式 {name: "超级管理员"}
+            if (typeof role === 'object' && role !== null) {
+              return role.name || role.roleName || '';
+            }
+            // 处理字符串格式
+            return role || '';
+          }).filter(role => !!role);
+        }
+      } catch (e) {
+        console.error('角色数据解析失败:', e);
+        roles = [];
+      }
+    }
+    
+    console.log('解析后的角色:', roles);
+    
+    // 设置角色和权限
+    userRoles.value = roles;
+    
+    // 分离权限
+    const permissions = roles.filter(role => role.includes(':'));
+    if (permissions.length > 0) {
+      userPermissions.value = permissions;
+    }
+    
+    // 临时添加调试角色，确保菜单可见（仅用于测试）
+    // userRoles.value.push('ADMIN');
+    
+    return true;
+  } catch (e) {
+    console.error('解析角色数据出错:', e);
+    return false;
+  }
+};
+
 // 初始化函数
 const init = () => {
   console.log('正在初始化管理员首页...');
@@ -372,114 +428,66 @@ const init = () => {
       console.log('处理后的管理员信息:', userInfo.value);
     }
     
-    // 获取用户角色
-    const rolesData = uni.getStorageSync('admin_roles');
-    console.log('原始角色数据:', rolesData);
-    
-    // 清空角色列表，准备重新填充
-    userRoles.value = [];
-    
-    if (rolesData) {
-      try {
-        // 处理不同格式的角色数据
-        if (typeof rolesData === 'string') {
-          try {
-            // 尝试解析JSON字符串
-            const parsedRoles = JSON.parse(rolesData);
-            
-            // 如果是数组，直接添加
-            if (Array.isArray(parsedRoles)) {
-              userRoles.value = [...userRoles.value, ...parsedRoles];
-            } 
-            // 如果是对象，尝试提取roles属性
-            else if (parsedRoles && typeof parsedRoles === 'object') {
-              if (Array.isArray(parsedRoles.roles)) {
-                userRoles.value = [...userRoles.value, ...parsedRoles.roles];
-              } else {
-                // 将对象中的所有键值对作为角色
-                Object.keys(parsedRoles).forEach(key => {
-                  userRoles.value.push(parsedRoles[key]);
-                });
-              }
-            }
-          } catch (e) {
-            // 如果解析失败，当作单个角色名称处理
-            console.warn('角色数据解析失败，作为单个角色处理:', rolesData);
-            userRoles.value.push(rolesData);
-          }
-        } 
-        // 如果是数组，直接使用
-        else if (Array.isArray(rolesData)) {
-          userRoles.value = [...userRoles.value, ...rolesData];
-        }
-        // 如果是其他类型，尝试提取有用信息
-        else if (rolesData && typeof rolesData === 'object') {
-          // 尝试提取roles属性
-          if (Array.isArray(rolesData.roles)) {
-            userRoles.value = [...userRoles.value, ...rolesData.roles];
-          } else {
-            // 将对象中的所有键值对作为角色
-            Object.keys(rolesData).forEach(key => {
-              if (rolesData[key]) {
-                userRoles.value.push(rolesData[key]);
-              }
-            });
-          }
-        }
-        
-        // 提取并处理角色数据
-        userRoles.value = userRoles.value.map(role => {
-          // 如果是字符串，直接返回
-          if (typeof role === 'string') {
-            return role;
-          }
-          // 如果是对象，提取name属性
-          else if (role && typeof role === 'object') {
-            if (role.name) return role.name;
-            if (role.roleName) return role.roleName;
-            if (role.code) return role.code;
-            // 返回对象中的第一个非空字符串属性
-            for (const key in role) {
-              if (typeof role[key] === 'string' && role[key]) {
-                return role[key];
-              }
-            }
-          }
-          // 其他情况返回空字符串，过滤掉
-          return '';
-        }).filter(role => role); // 过滤掉空值
-        
-        console.log('处理后的角色列表:', userRoles.value);
-        
-        // 确保至少有ADMIN角色
-        if (!userRoles.value.includes('ADMIN')) {
-          userRoles.value.push('ADMIN');
-        }
-      } catch (e) {
-        console.error('处理角色数据出错:', e);
-        // 出错时确保用户有基本角色
-        userRoles.value = ['ADMIN'];
-      }
+    // 获取用户角色 - 从Token存储获取
+    const tokenRoles = uni.getStorageSync('admin_token_roles');
+    if (tokenRoles) {
+      console.log('从Token获取的权限:', tokenRoles);
+      parseUserRoles(tokenRoles);
     } else {
-      console.log('未找到角色数据，使用默认角色');
-      userRoles.value = ['ADMIN'];
+      // 兼容旧版 - 从存储获取角色对象
+      const rolesData = uni.getStorageSync('admin_roles');
+      if (rolesData) {
+        console.log('从存储获取的角色数据:', rolesData);
+        parseUserRoles(rolesData);
+      } else {
+        console.warn('未找到角色数据，使用默认角色');
+      }
     }
+    
+    // 确保至少有基本权限
+    ensureMinimumAccess();
     
     console.log('最终使用的角色:', userRoles.value);
     
     // 默认选中第一个有权限的菜单
-    if (filteredMenuList.value.length > 0) {
-      // 尝试找到第一个有权限访问的菜单
-      const firstPermittedMenu = filteredMenuList.value.find(menu => hasPermission(menu));
-      if (firstPermittedMenu) {
-        currentMenu.value = firstPermittedMenu.id;
-      } else {
-        currentMenu.value = filteredMenuList.value[0].id;
-      }
+    const accessibleMenus = menuList.filter(menu => canAccessMenu(menu));
+    if (accessibleMenus.length > 0) {
+      currentMenu.value = accessibleMenus[0].id;
       console.log('默认选中菜单:', currentMenu.value);
     }
   } catch (e) {
     console.error('初始化过程出错:', e);
+    // 出错时确保基本权限
+    ensureMinimumAccess();
+  }
+};
+
+// 确保至少有基本权限（防止全部锁定）
+const ensureMinimumAccess = () => {
+  // 如果没有任何角色，给予最基本的ADMIN角色
+  if (userRoles.value.length === 0) {
+    console.warn('未检测到任何角色，添加基本角色');
+    userRoles.value.push('ADMIN');
+  }
+  
+  // 检查是否至少有一个菜单可访问
+  const hasAccessibleMenu = menuList.some(menu => canAccessMenu(menu));
+  if (!hasAccessibleMenu) {
+    console.warn('检测到没有可访问的菜单，添加ADMIN角色');
+    
+    // 如果包含超级管理员相关字样，设为超级管理员
+    const isLikelySuperAdmin = userInfo.value.email && (
+      userInfo.value.email.includes('admin') || 
+      userInfo.value.nickname?.includes('超级') ||
+      userInfo.value.nickname?.includes('admin')
+    );
+    
+    if (isLikelySuperAdmin) {
+      console.log('根据用户信息推断为超级管理员');
+      userRoles.value.push('SUPER_ADMIN');
+    } else {
+      userRoles.value.push('ADMIN');
+    }
   }
 };
 
@@ -501,11 +509,12 @@ onBeforeUnmount(() => {
 
 // 处理菜单点击
 const handleMenuClick = (menu) => {
-  // 检查是否有权限点击此菜单
-  if (!hasPermission(menu)) {
+  // 如果菜单被禁用，则显示提示
+  if (!canAccessMenu(menu)) {
     uni.showToast({
-      title: '您没有权限访问此功能',
-      icon: 'none'
+      title: '权限不足，无法访问',
+      icon: 'none',
+      duration: 2000
     });
     return;
   }
@@ -528,6 +537,7 @@ const logout = () => {
         uni.removeStorageSync('admin_token');
         uni.removeStorageSync('admin_info');
         uni.removeStorageSync('admin_roles');
+        uni.removeStorageSync('admin_token_roles');
         
         // 跳转到登录页
         uni.redirectTo({
@@ -541,13 +551,13 @@ const logout = () => {
 
 // 添加菜单分类计算和获取方法
 const menuCategories = computed(() => {
-  // 获取所有可见菜单的不重复分类
-  const categories = filteredMenuList.value.map(menu => menu.category);
+  // 获取所有菜单的不重复分类
+  const categories = menuList.map(menu => menu.category);
   return [...new Set(categories)];
 });
 
 const getCategoryMenus = (category) => {
-  return filteredMenuList.value.filter(menu => menu.category === category);
+  return menuList.filter(menu => menu.category === category);
 };
 </script>
 
@@ -620,30 +630,23 @@ const getCategoryMenus = (category) => {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 100;
-  animation: fadeIn 0.2s ease;
-  overflow: hidden;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.user-menu .menu-item {
+.menu-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  transition: background-color 0.2s;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #333333;
+  transition: all 0.2s;
 }
 
-.user-menu .menu-item:hover {
+.menu-item:hover {
   background-color: #f5f7fa;
 }
 
-.user-menu .menu-item text {
-  margin-left: 6px;
-  color: #333;
-  font-size: 13px;
+.menu-item uni-icons {
+  margin-right: 6px;
 }
 
 /* 主要内容区域 */
@@ -653,285 +656,138 @@ const getCategoryMenus = (category) => {
   overflow: hidden;
 }
 
-/* 侧边栏导航 */
+/* 侧边栏样式 */
 .sidebar-container {
-  flex-shrink: 0;
-  width: 180px;
+  width: 200px;
   background-color: #ffffff;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-  height: 100%;
-  z-index: 10;
+  box-shadow: 1px 0 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: width 0.3s;
 }
 
 .sidebar {
-  width: 180px;
   height: 100%;
-  background-color: #ffffff;
-  padding: 10px 0;
+  padding: 16px 0;
 }
 
-.sidebar .menu-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 15px;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin: 2px 10px;
-  border-radius: 4px;
-}
-
-.sidebar .menu-item:hover {
-  background-color: #f5f7fa;
-}
-
-.sidebar .menu-item.active {
-  background-color: #eef2ff;
-  color: #4361ee;
-}
-
-.sidebar .menu-item.disabled {
-  background-color: #f5f7fa;
-  color: #aaa;
-  cursor: not-allowed;
-  position: relative;
-  overflow: hidden;
-}
-
-.sidebar .menu-item.disabled:after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.4);
-  pointer-events: none;
-}
-
-.sidebar .menu-item.active .menu-text {
-  color: #4361ee;
-  font-weight: 500;
-}
-
-.sidebar .menu-text {
-  margin-left: 8px;
-  color: #333;
-  font-size: 13px;
-}
-
-/* 内容区域 */
-.content-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 15px;
-}
-
-.breadcrumb {
-  height: 36px;
-  background-color: #ffffff;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.breadcrumb text {
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-}
-
-.content {
-  flex: 1;
-  background-color: #ffffff;
-  border-radius: 4px;
-  padding: 15px;
-  overflow-y: auto;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* Dashboard样式 */
-.dashboard {
-  padding: 10px 0;
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.welcome-text {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
-
-.date-text {
-  font-size: 13px;
-  color: #666;
-}
-
-.stat-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  flex: 1;
-  min-width: 180px;
-  background-color: #fff;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  padding: 15px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-}
-
-.stat-card-header {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.stat-card-value {
-  font-size: 22px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.stat-card-footer {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-}
-
-.stat-trend {
-  margin-right: 5px;
-  font-weight: 500;
-}
-
-.stat-up {
-  color: #52c41a;
-}
-
-.stat-down {
-  color: #ff4d4f;
-}
-
-.stat-period {
-  color: #999;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 15px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.activity-list {
-  background-color: #fff;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.activity-item {
-  display: flex;
-  padding: 12px;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.activity-item:last-child {
-  border-bottom: none;
-}
-
-.activity-time {
-  width: 50px;
-  color: #999;
-  font-size: 12px;
-}
-
-.activity-content {
-  flex: 1;
-  font-size: 13px;
-  color: #333;
-}
-
-.activity-user {
-  font-weight: 500;
-  color: #4361ee;
-}
-
-.activity-action {
-  margin: 0 3px;
-}
-
-.activity-target {
-  color: #5c6b77;
-}
-
-/* 响应式设计 */
-@media screen and (max-width: 768px) {
-  .sidebar {
-    width: 160px;
-  }
-  
-  .stat-card {
-    min-width: 140px;
-  }
-  
-  .content-wrapper {
-    padding: 10px;
-  }
-  
-  .content {
-    padding: 12px;
-  }
-}
-
-/* 调试信息 */
-.debug-info {
-  font-size: 12px;
-  color: #999;
-  padding: 5px 15px;
-  margin-bottom: 10px;
-  border-bottom: 1px dashed #eee;
-}
-
-/* 菜单分类样式 */
 .menu-category {
   margin-bottom: 16px;
 }
 
 .category-title {
   display: block;
+  padding: 8px 16px;
   font-size: 12px;
-  color: #999;
-  padding: 5px 15px;
-  margin-bottom: 5px;
+  color: #999999;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #333333;
+  position: relative;
+  transition: all 0.2s;
+  cursor: pointer;
+  margin-bottom: 1px;
+}
+
+.menu-item:hover {
+  background-color: #f5f7fa;
+}
+
+.menu-item.active {
+  background-color: #edf2ff;
+  color: #4361ee;
+  font-weight: 500;
+  border-right: 3px solid #4361ee;
+}
+
+.menu-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: transparent !important;
+  color: #999 !important;
+}
+
+.menu-text {
+  margin-left: 8px;
 }
 
 .lock-icon {
-  margin-left: 8px;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* 内容区域样式 */
+.content-wrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.breadcrumb {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #eeeeee;
+  font-size: 14px;
+  color: #666666;
+}
+
+.content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* 用户角色信息显示 */
+.user-role-info {
+  text-align: center;
+  padding: 10px 0;
+  margin-bottom: 15px;
+  border-bottom: 1px dashed #eee;
+}
+
+.user-role-info text {
   font-size: 12px;
-  color: #aaa;
+  padding: 3px 8px;
+  background-color: #f0f7ff;
+  color: #4361ee;
+  border-radius: 12px;
+}
+
+/* 调试信息 */
+.debug-info {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin: 8px 0;
+  padding: 4px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  display: none; /* 生产环境隐藏 */
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .sidebar-container {
+    position: absolute;
+    height: calc(100% - 50px);
+    z-index: 99;
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+  
+  .sidebar-container.visible {
+    transform: translateX(0);
+  }
 }
 </style> 

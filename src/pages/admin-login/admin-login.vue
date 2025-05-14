@@ -182,9 +182,16 @@ const handleSubmit = () => {
 				// 登录成功，保存token和管理员信息到本地存储
 				uni.setStorageSync('admin_token', res.data.token);
 				
-				// 保存管理员信息，包括nickname等字段
-				const adminInfo = res.data.user || {};
-				uni.setStorageSync('admin_info', adminInfo);
+				// 保存Token中包含的权限信息（如果有）
+				if (res.data.permissions && Array.isArray(res.data.permissions)) {
+					console.log('保存Token中的权限信息:', res.data.permissions);
+					uni.setStorageSync('admin_token_roles', res.data.permissions);
+				}
+				
+				// 保存管理员信息
+				if (res.data.userInfo) {
+					uni.setStorageSync('admin_info', res.data.userInfo);
+				}
 				
 				// 保存角色信息，并打印调试信息
 				const roles = res.data.roles || [];
@@ -210,7 +217,7 @@ const handleSubmit = () => {
 					uni.redirectTo({
 						url: '/pages/admin/index'
 					});
-				}, 1500);
+				}, 1000);
 			} else {
 				// 登录失败，显示错误信息
 				console.log('登录失败响应:', res);
