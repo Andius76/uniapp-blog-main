@@ -523,7 +523,7 @@ const fetchArticles = async (page = 1) => {
         
         const commentCount = article.commentCount !== undefined ? 
           (isNaN(Number(article.commentCount)) ? 0 : Number(article.commentCount)) : 0;
-        
+          
         // 检查可能的下划线命名方式
         const view_count = article.view_count !== undefined ? 
           (isNaN(Number(article.view_count)) ? 0 : Number(article.view_count)) : 0;
@@ -854,22 +854,28 @@ const updateArticleStatus = async (id, status) => {
     console.log('更新文章状态成功:', res);
     
     let statusText = '';
+    let noticeContent = '';
+    
     switch (status) {
       case '0': 
       case 0: 
         statusText = '驳回成功，审核未通过'; 
+        noticeContent = `您的文章(ID:${id})未通过审核，请检查内容后重新提交。`;
         break;
       case '1': 
       case 1: 
         statusText = '已发布'; 
+        noticeContent = `您的文章(ID:${id})已审核通过并发布。`;
         break;
       case '2': 
       case 2: 
         statusText = '已标记为待审核'; 
+        noticeContent = `您的文章(ID:${id})已提交审核，请耐心等待。`;
         break;
       case '3': 
       case 3: 
         statusText = '已下架'; 
+        noticeContent = `您的文章(ID:${id})已被管理员下架，如有疑问请联系客服。`;
         break;
       default: 
         statusText = '已更新状态';
@@ -879,6 +885,28 @@ const updateArticleStatus = async (id, status) => {
       title: statusText,
       icon: 'success'
     });
+    
+    // 获取文章详情，用于发送系统公告
+    const articleDetail = await articleApi.getArticleDetail(id);
+    if (articleDetail && articleDetail.data) {
+      const article = articleDetail.data;
+      const userId = article.userId; // 获取文章作者ID
+      
+      // 发送系统公告
+      if (userId && noticeContent) {
+        try {
+          console.log('发送系统公告给用户:', userId, '内容:', noticeContent);
+          
+          // 直接使用查询参数形式发送，确保content参数正确传递
+          const noticeRes = await http.post(
+            `/api/message/system-notice?toUserId=${userId}&content=${encodeURIComponent(noticeContent)}&targetId=${id}`
+          );
+          console.log('系统公告发送结果:', noticeRes);
+        } catch (error) {
+          console.error('发送系统公告失败:', error);
+        }
+      }
+    }
     
     // 更新本地数据
     const index = articles.value.findIndex(a => a.id === id);
@@ -915,6 +943,14 @@ const confirmDelete = async () => {
   loading.value = true;
   
   try {
+    // 获取文章详情，用于发送系统公告
+    let userId = null;
+    const articleDetail = await articleApi.getArticleDetail(articleToDeleteId.value);
+    if (articleDetail && articleDetail.data) {
+      userId = articleDetail.data.userId; // 获取文章作者ID
+    }
+    
+    // 执行删除操作
     const res = await articleApi.deleteArticle(articleToDeleteId.value);
     console.log('删除文章成功:', res);
     
@@ -922,6 +958,22 @@ const confirmDelete = async () => {
       title: '删除成功',
       icon: 'success'
     });
+    
+    // 发送系统公告
+    if (userId) {
+      try {
+        const noticeContent = `您的文章(ID:${articleToDeleteId.value})已被管理员删除，如有疑问请联系客服。`;
+        console.log('发送系统公告给用户:', userId, '内容:', noticeContent);
+        
+        // 直接使用查询参数形式发送
+        const noticeRes = await http.post(
+          `/api/message/system-notice?toUserId=${userId}&content=${encodeURIComponent(noticeContent)}&targetId=${articleToDeleteId.value}`
+        );
+        console.log('系统公告发送结果:', noticeRes);
+      } catch (error) {
+        console.error('发送系统公告失败:', error);
+      }
+    }
     
     // 刷新文章列表
     if (articles.value.length === 1 && currentPage.value > 1) {
