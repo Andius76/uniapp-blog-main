@@ -134,128 +134,158 @@
         <uni-load-more status="loading" :contentText="loadingText"></uni-load-more>
       </view>
       
-      <!-- 权限树/列表 -->
-      <view v-else class="permission-assign-container">
-        <!-- 检查是否有角色被选中 -->
-        <view v-if="!selectedRole" class="no-data">
-          <view class="no-data-icon">👆</view>
-          <text>请先选择一个角色</text>
-          <text class="no-data-hint">在上方下拉框中选择需要配置的角色</text>
-        </view>
-        
-        <!-- 权限分配列表 -->
-        <view v-else class="permission-assign-list">
-          <view class="assign-header">
-            <view class="assign-title">
-              <text class="title-text">给"{{ selectedRoleName }}"分配权限</text>
-              <text class="assign-subtitle">已选择 {{ selectedPermissions.length }} 项权限 / 共 {{ allPermissions.length }} 项</text>
+      <!-- 权限分配列表 -->
+      <view v-else class="permission-assign-list">
+        <!-- 修改为左右布局结构 -->
+        <view class="permission-assign-layout">
+          <!-- 左侧：标题和操作按钮 -->
+          <view class="permission-assign-sidebar">
+            <view class="assign-header">
+              <view class="assign-title">
+                <text class="title-text">给"{{ selectedRoleName }}"分配权限</text>
+                <text class="assign-subtitle">已选择 {{ selectedPermissions.length }} 项权限 / 共 {{ allPermissions.length }} 项</text>
+              </view>
+              <view class="assign-actions">
+                <button class="btn btn-sm" @click="selectAll">全选</button>
+                <button class="btn btn-sm" @click="deselectAll">取消全选</button>
+              </view>
             </view>
-            <view class="assign-actions">
-              <button class="btn btn-sm" @click="selectAll">全选</button>
-              <button class="btn btn-sm" @click="deselectAll">取消全选</button>
+            
+            <!-- 左侧底部按钮 -->
+            <view class="sidebar-footer">
+              <view class="statistics">
+                <view class="statistics-item">
+                  <text class="statistics-label">当前显示:</text>
+                  <text class="statistics-value">{{ filteredPermissions.length }} 项</text>
+                </view>
+                <view class="statistics-item">
+                  <text class="statistics-label">已选择:</text>
+                  <text class="statistics-value">{{ selectedPermissions.length }} 项</text>
+                </view>
+                <view class="statistics-item">
+                  <text class="statistics-label">总计:</text>
+                  <text class="statistics-value">{{ allPermissions.length }} 项</text>
+                </view>
+              </view>
               <button 
-                class="btn btn-primary" 
-                @click="saveAssignments" 
+                class="btn btn-primary btn-block" 
+                @click="saveAssignments"
                 :disabled="savingAssignments"
               >
                 <text v-if="savingAssignments">保存中...</text>
-                <text v-else>保存</text>
+                <text v-else>保存权限配置</text>
               </button>
             </view>
           </view>
           
-          <!-- 搜索框 -->
-          <view class="search-container">
-            <uni-search-bar 
-              placeholder="搜索权限名称、描述或路径" 
-              v-model="permissionSearchText" 
-              @input="onPermissionSearch"
-              radius="5"
-              cancelButton="none"
-              clearButton="auto"
-              bgColor="#f5f5f5"
-            />
-          </view>
-          
-          <!-- 分类切换 -->
-          <view class="category-tabs">
-              <view 
-              class="category-tab" 
-              :class="{ active: permissionCategory === 'all' }"
-              @click="permissionCategory = 'all'"
-            >
-              <text>全部 ({{ allPermissions.length }})</text>
-            </view>
-            <view 
-              class="category-tab" 
-              :class="{ active: permissionCategory === 'selected' }"
-              @click="permissionCategory = 'selected'"
-            >
-              <text>已选择 ({{ selectedPermissions.length }})</text>
-            </view>
-            <view 
-              class="category-tab" 
-              :class="{ active: permissionCategory === 'unselected' }"
-              @click="permissionCategory = 'unselected'"
-            >
-              <text>未选择 ({{ allPermissions.length - selectedPermissions.length }})</text>
-            </view>
-          </view>
-          
-          <!-- 权限卡片 -->
-          <view class="permission-cards">
-            <view v-if="filteredPermissions.length === 0" class="no-data">
-              <text>{{ permissionSearchText ? '没有找到匹配的权限' : '没有可用的权限' }}</text>
+          <!-- 右侧：权限列表内容 -->
+          <view class="permission-assign-content">
+            <!-- 搜索框 -->
+            <view class="search-container">
+              <uni-search-bar 
+                placeholder="搜索权限名称、描述或路径" 
+                v-model="permissionSearchText" 
+                @input="onPermissionSearch"
+                radius="5"
+                cancelButton="none"
+                clearButton="auto"
+                bgColor="#f5f5f5"
+              />
             </view>
             
-            <checkbox-group @change="handlePermissionChange" class="checkbox-group">
+            <!-- 分类切换 -->
+            <view class="category-tabs">
               <view 
-                v-for="(perm, index) in filteredPermissions" 
-                :key="perm.id" 
-                class="permission-card"
-                :class="{ 'selected-card': selectedPermissions.includes(perm.id) }"
+                class="category-tab" 
+                :class="{ active: permissionCategory === 'all' }"
+                @click="permissionCategory = 'all'"
               >
-                <checkbox 
-                  :value="perm.id.toString()" 
-                  :checked="selectedPermissions.includes(perm.id)"
-                  color="#4361ee"
-                  class="permission-checkbox"
-                />
-                <view class="permission-content" @click="togglePermission(perm.id)">
-                  <view class="permission-header">
-                  <text class="permission-name">{{ perm.name }}</text>
-                    <text v-if="perm.isSystem === '1'" class="permission-tag system-tag">系统</text>
-                    <text v-else class="permission-tag custom-tag">自定义</text>
+                <text>全部 ({{ allPermissions.length }})</text>
+              </view>
+              <view 
+                class="category-tab" 
+                :class="{ active: permissionCategory === 'selected' }"
+                @click="permissionCategory = 'selected'"
+              >
+                <text>已选择 ({{ selectedPermissions.length }})</text>
+              </view>
+              <view 
+                class="category-tab" 
+                :class="{ active: permissionCategory === 'unselected' }"
+                @click="permissionCategory = 'unselected'"
+              >
+                <text>未选择 ({{ allPermissions.length - selectedPermissions.length }})</text>
+              </view>
+            </view>
+            
+            <!-- 权限卡片 -->
+            <view class="permission-cards">
+              <view v-if="filteredPermissions.length === 0" class="no-data">
+                <text>{{ permissionSearchText ? '没有找到匹配的权限' : '没有可用的权限' }}</text>
+              </view>
+              
+              <checkbox-group @change="handlePermissionChange" class="checkbox-group">
+                <!-- 使用虚拟滚动优化大量权限时的性能 -->
+                <scroll-view 
+                  scroll-y 
+                  class="permission-scroll-view"
+                  :scroll-top="scrollTop"
+                  @scroll="onPermissionScroll"
+                  :enable-back-to-top="true"
+                  :scroll-with-animation="true"
+                  :show-scrollbar="false"
+                >
+                  <view 
+                    v-for="(perm, index) in filteredPermissions" 
+                    :key="perm.id" 
+                    class="permission-card"
+                    :class="{ 
+                      'selected-card': selectedPermissions.includes(perm.id),
+                      'permission-card-animate': true
+                    }"
+                    :style="{ animationDelay: index * 0.03 + 's' }"
+                  >
+                    <checkbox 
+                      :value="perm.id.toString()" 
+                      :checked="selectedPermissions.includes(perm.id)"
+                      color="#4361ee"
+                      class="permission-checkbox"
+                    />
+                    <view class="permission-content" @click="togglePermission(perm.id)">
+                      <view class="permission-header">
+                        <text class="permission-name">{{ perm.name }}</text>
+                        <text v-if="perm.isSystem === '1'" class="permission-tag system-tag">系统</text>
+                        <text v-else class="permission-tag custom-tag">自定义</text>
+                      </view>
+                      <view class="permission-body">
+                        <text class="permission-code">{{ perm.code }}</text>
+                        <text class="permission-desc">{{ perm.description || '无描述' }}</text>
+                        <text class="permission-path" v-if="perm.path">路径: {{ perm.path }}</text>
+                      </view>
+                      <view class="permission-footer">
+                        <text class="permission-id">ID: {{ perm.id }}</text>
+                        <text class="permission-time">{{ formatDate(perm.createTime) }}</text>
+                      </view>
+                    </view>
                   </view>
-                  <view class="permission-body">
-                    <text class="permission-code">{{ perm.code }}</text>
-                  <text class="permission-desc">{{ perm.description || '无描述' }}</text>
-                  <text class="permission-path" v-if="perm.path">路径: {{ perm.path }}</text>
+                  
+                  <!-- 滚动到底部加载中提示 -->
+                  <view v-if="filteredPermissions.length > 20" class="scroll-loading-tip">
+                    <text>- 共 {{ filteredPermissions.length }} 项 -</text>
                   </view>
-                  <view class="permission-footer">
-                    <text class="permission-id">ID: {{ perm.id }}</text>
-                    <text class="permission-time">{{ formatDate(perm.createTime) }}</text>
+                </scroll-view>
+                
+                <!-- 快速滚动控制器 -->
+                <view v-if="filteredPermissions.length > 10" class="scroll-control">
+                  <view class="scroll-control-btn scroll-top" @click="scrollToPosition('top')">
+                    <uni-icons type="arrow-up" size="14" color="#666"></uni-icons>
+                  </view>
+                  <view class="scroll-control-btn scroll-bottom" @click="scrollToPosition('bottom')">
+                    <uni-icons type="arrow-down" size="14" color="#666"></uni-icons>
                   </view>
                 </view>
-              </view>
-            </checkbox-group>
-          </view>
-          
-          <!-- 底部保存按钮 -->
-          <view class="assign-footer">
-            <view class="statistics">
-              <text>当前显示: {{ filteredPermissions.length }} 项</text>
-              <text>已选择: {{ selectedPermissions.length }} 项</text>
-              <text>总计: {{ allPermissions.length }} 项</text>
+              </checkbox-group>
             </view>
-            <button 
-              class="btn btn-primary btn-block" 
-              @click="saveAssignments"
-              :disabled="savingAssignments"
-            >
-              <text v-if="savingAssignments">保存中...</text>
-              <text v-else>保存权限配置</text>
-            </button>
           </view>
         </view>
       </view>
@@ -1361,6 +1391,37 @@ const switchToAssignment = () => {
     fetchRoles();
   }
 };
+
+// 滚动控制变量
+const scrollTop = ref(0);
+const oldScrollTop = ref(0);
+const scrollTimerId = ref(null);
+
+// 处理权限列表滚动事件
+const onPermissionScroll = (e) => {
+  oldScrollTop.value = e.detail.scrollTop;
+  
+  // 防抖动处理滚动事件
+  if (scrollTimerId.value !== null) {
+    clearTimeout(scrollTimerId.value);
+  }
+  
+  scrollTimerId.value = setTimeout(() => {
+    scrollTop.value = oldScrollTop.value;
+    scrollTimerId.value = null;
+  }, 100);
+};
+
+// 滚动到指定位置
+const scrollToPosition = (position) => {
+  if (position === 'top') {
+    // 滚动到顶部
+    scrollTop.value = 0;
+  } else if (position === 'bottom') {
+    // 滚动到底部，使用一个很大的值
+    scrollTop.value = 10000;
+  }
+};
 </script>
 
 <style>
@@ -1656,36 +1717,63 @@ const switchToAssignment = () => {
 }
 
 .permission-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 10px 0;
+  position: relative;
   margin-bottom: 20px;
+  height: 450px; /* 增加高度提供更多可视空间 */
+}
+
+.permission-scroll-view {
+  height: 100%;
+  position: relative;
+}
+
+.checkbox-group {
+  height: 100%;
+  position: relative;
 }
 
 .permission-card {
   display: flex;
   align-items: flex-start;
-  padding: 12px;
+  padding: 15px;
   border: 1px solid #eee;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  margin-bottom: 10px;
+  background-color: #fff;
+}
+
+.permission-card-animate {
+  animation: fadeIn 0.3s ease-in-out forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .permission-card:hover {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .selected-card {
   background-color: #f0f7ff;
   border-color: #4361ee;
+  box-shadow: 0 2px 8px rgba(67, 97, 238, 0.15);
 }
 
 .permission-checkbox {
-  margin-right: 10px;
+  margin-right: 12px;
   margin-top: 4px;
 }
 
@@ -1697,7 +1785,7 @@ const switchToAssignment = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .permission-name {
@@ -1707,10 +1795,11 @@ const switchToAssignment = () => {
 }
 
 .permission-tag {
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
   font-size: 12px;
   color: #fff;
+  font-weight: bold;
 }
 
 .system-tag {
@@ -1722,31 +1811,37 @@ const switchToAssignment = () => {
 }
 
 .permission-body {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .permission-code {
   display: inline-block;
   background-color: #f5f5f5;
-  padding: 2px 6px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   color: #666;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   font-family: monospace;
+  border: 1px solid #eee;
 }
 
 .permission-desc {
   font-size: 14px;
   color: #666;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   display: block;
+  line-height: 1.5;
 }
 
 .permission-path {
   font-size: 12px;
   color: #999;
   display: block;
+  background-color: #f9f9f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
 }
 
 .permission-footer {
@@ -1755,7 +1850,9 @@ const switchToAssignment = () => {
   align-items: center;
   font-size: 12px;
   color: #999;
-  margin-top: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #eee;
 }
 
 .assign-footer {
@@ -1844,5 +1941,176 @@ const switchToAssignment = () => {
 
 .retry-btn:hover {
   background-color: #e0f0ff;
+}
+
+/* 滚动控制器样式 */
+.scroll-control {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 2;
+}
+
+.scroll-control-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scroll-control-btn:hover {
+  background-color: #f0f7ff;
+  transform: scale(1.1);
+}
+
+.scroll-loading-tip {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+/* 权限分配布局调整 - 左右结构 */
+.permission-assign-layout {
+  display: flex;
+  gap: 20px;
+}
+
+/* 左侧边栏样式 */
+.permission-assign-sidebar {
+  width: 300px;
+  min-width: 280px;
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 520px; /* 与右侧内容等高 */
+}
+
+/* 右侧内容区域样式 */
+.permission-assign-content {
+  flex: 1;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 20px;
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* 标题区域调整 */
+.assign-header {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+}
+
+.assign-title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.assign-subtitle {
+  font-size: 13px;
+  color: #666;
+  background-color: #eef2ff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.assign-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.assign-actions .btn {
+  flex: 1;
+  text-align: center;
+}
+
+/* 左侧底部统计区域 */
+.sidebar-footer {
+  margin-top: auto;
+}
+
+.statistics {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.statistics-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.statistics-label {
+  color: #666;
+}
+
+.statistics-value {
+  color: #4361ee;
+  font-weight: bold;
+}
+
+/* 权限卡片区域高度调整 */
+.permission-cards {
+  position: relative;
+  margin-bottom: 20px;
+  height: 400px; /* 右侧高度调整 */
+}
+
+/* 适配移动端 */
+@media screen and (max-width: 768px) {
+  .permission-assign-layout {
+    flex-direction: column;
+  }
+  
+  .permission-assign-sidebar {
+    width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+  }
+  
+  .statistics {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .statistics-item {
+    width: 45%;
+  }
 }
 </style> 
