@@ -891,15 +891,40 @@ const updateArticleStatus = async (id, status) => {
     if (articleDetail && articleDetail.data) {
       const article = articleDetail.data;
       const userId = article.userId; // 获取文章作者ID
+      const articleTitle = article.title || `ID:${id}`; // 获取文章标题，如果没有则使用ID
       
       // 发送系统公告
       if (userId && noticeContent) {
         try {
-          console.log('发送系统公告给用户:', userId, '内容:', noticeContent);
+          // 根据文章状态生成不同的通知内容
+          let statusNoticeContent = '';
+          
+          switch (status) {
+            case '0': 
+            case 0: 
+              statusNoticeContent = `您的文章《${articleTitle}》未通过审核，请检查内容后重新提交。`;
+              break;
+            case '1': 
+            case 1: 
+              statusNoticeContent = `您的文章《${articleTitle}》已审核通过并发布。`;
+              break;
+            case '2': 
+            case 2: 
+              statusNoticeContent = `您的文章《${articleTitle}》已提交审核，请耐心等待。`;
+              break;
+            case '3': 
+            case 3: 
+              statusNoticeContent = `您的文章《${articleTitle}》已被管理员下架，如有疑问请联系客服。`;
+              break;
+            default: 
+              statusNoticeContent = noticeContent; // 使用默认内容
+          }
+          
+          console.log('发送系统公告给用户:', userId, '内容:', statusNoticeContent);
           
           // 直接使用查询参数形式发送，确保content参数正确传递
           const noticeRes = await http.post(
-            `/api/message/system-notice?toUserId=${userId}&content=${encodeURIComponent(noticeContent)}&targetId=${id}`
+            `/api/message/system-notice?toUserId=${userId}&content=${encodeURIComponent(statusNoticeContent)}&targetId=${id}`
           );
           console.log('系统公告发送结果:', noticeRes);
         } catch (error) {
@@ -945,9 +970,14 @@ const confirmDelete = async () => {
   try {
     // 获取文章详情，用于发送系统公告
     let userId = null;
+    let articleTitle = `ID:${articleToDeleteId.value}`;
     const articleDetail = await articleApi.getArticleDetail(articleToDeleteId.value);
     if (articleDetail && articleDetail.data) {
       userId = articleDetail.data.userId; // 获取文章作者ID
+      // 获取文章标题
+      if (articleDetail.data.title) {
+        articleTitle = articleDetail.data.title;
+      }
     }
     
     // 执行删除操作
@@ -962,7 +992,7 @@ const confirmDelete = async () => {
     // 发送系统公告
     if (userId) {
       try {
-        const noticeContent = `您的文章(ID:${articleToDeleteId.value})已被管理员删除，如有疑问请联系客服。`;
+        const noticeContent = `您的文章《${articleTitle}》已被管理员删除，如有疑问请联系客服。`;
         console.log('发送系统公告给用户:', userId, '内容:', noticeContent);
         
         // 直接使用查询参数形式发送
