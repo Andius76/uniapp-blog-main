@@ -1623,9 +1623,9 @@ const scrollToPosition = (position) => {
 .selection-wrapper {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   background-color: #f9f9f9;
-  padding: 15px;
+  padding: 12px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -1664,48 +1664,55 @@ const scrollToPosition = (position) => {
 
 .assign-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
   border-bottom: 1px solid #eee;
-  padding-bottom: 15px;
+  padding-bottom: 12px;
 }
 
 .assign-title {
   display: flex;
   flex-direction: column;
+  gap: 6px;
 }
 
 .title-text {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   color: #333;
-  margin-bottom: 5px;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .assign-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #666;
+  background-color: #eef2ff;
+  padding: 5px 8px;
+  border-radius: 6px;
+  text-align: center;
 }
 
 .assign-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 3px;
 }
 
 .category-tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 15px;
 }
 
 .category-tab {
-  padding: 8px 15px;
+  padding: 7px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
   cursor: pointer;
   position: relative;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s;
 }
 
@@ -1718,8 +1725,8 @@ const scrollToPosition = (position) => {
 
 .permission-cards {
   position: relative;
-  margin-bottom: 20px;
-  height: 450px; /* 增加高度提供更多可视空间 */
+  margin-bottom: 15px;
+  height: 420px;
 }
 
 .permission-scroll-view {
@@ -1735,12 +1742,12 @@ const scrollToPosition = (position) => {
 .permission-card {
   display: flex;
   align-items: flex-start;
-  padding: 15px;
+  padding: 12px;
   border: 1px solid #eee;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   background-color: #fff;
 }
 
@@ -1773,8 +1780,8 @@ const scrollToPosition = (position) => {
 }
 
 .permission-checkbox {
-  margin-right: 12px;
-  margin-top: 4px;
+  margin-right: 10px;
+  margin-top: 3px;
 }
 
 .permission-content {
@@ -1785,19 +1792,19 @@ const scrollToPosition = (position) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .permission-name {
   font-weight: bold;
   color: #333;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .permission-tag {
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
   color: #fff;
   font-weight: bold;
 }
@@ -1811,27 +1818,27 @@ const scrollToPosition = (position) => {
 }
 
 .permission-body {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .permission-code {
   display: inline-block;
   background-color: #f5f5f5;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
   font-size: 12px;
   color: #666;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   font-family: monospace;
   border: 1px solid #eee;
 }
 
 .permission-desc {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   display: block;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .permission-path {
@@ -1839,52 +1846,54 @@ const scrollToPosition = (position) => {
   color: #999;
   display: block;
   background-color: #f9f9f9;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .permission-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px dashed #eee;
 }
 
 .assign-footer {
-  margin-top: 20px;
+  margin-top: 15px;
   border-top: 1px solid #eee;
-  padding-top: 20px;
+  padding-top: 15px;
 }
 
 .statistics {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  background-color: #f9f9f9;
-  padding: 10px;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+  background-color: #fff;
+  padding: 12px;
   border-radius: 6px;
+  border: 1px solid #eee;
 }
 
 /* 操作提示样式 */
 .tips-container {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   background-color: #e6f7ff;
-  padding: 12px;
+  padding: 10px;
   border-radius: 6px;
   border-left: 4px solid #1890ff;
 }
 
 .tips-text {
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 
 .no-data {
@@ -1983,21 +1992,21 @@ const scrollToPosition = (position) => {
 /* 权限分配布局调整 - 左右结构 */
 .permission-assign-layout {
   display: flex;
-  gap: 20px;
+  gap: 12px;
 }
 
 /* 左侧边栏样式 */
 .permission-assign-sidebar {
-  width: 300px;
-  min-width: 280px;
+  width: 280px;
+  min-width: 260px;
   background-color: #f9f9f9;
-  padding: 20px;
+  padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 520px; /* 与右侧内容等高 */
+  height: 480px;
 }
 
 /* 右侧内容区域样式 */
@@ -2005,7 +2014,7 @@ const scrollToPosition = (position) => {
   flex: 1;
   border: 1px solid #eee;
   border-radius: 8px;
-  padding: 20px;
+  padding: 15px;
   background-color: #fff;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
@@ -2014,20 +2023,20 @@ const scrollToPosition = (position) => {
 .assign-header {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 15px;
   border-bottom: 1px solid #eee;
-  padding-bottom: 20px;
+  padding-bottom: 12px;
 }
 
 .assign-title {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .title-text {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   color: #333;
   line-height: 1.3;
@@ -2035,23 +2044,18 @@ const scrollToPosition = (position) => {
 }
 
 .assign-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #666;
   background-color: #eef2ff;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 6px;
   text-align: center;
 }
 
 .assign-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 5px;
-}
-
-.assign-actions .btn {
-  flex: 1;
-  text-align: center;
+  gap: 8px;
+  margin-top: 3px;
 }
 
 /* 左侧底部统计区域 */
@@ -2062,10 +2066,10 @@ const scrollToPosition = (position) => {
 .statistics {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 15px;
   background-color: #fff;
-  padding: 15px;
+  padding: 12px;
   border-radius: 6px;
   border: 1px solid #eee;
 }
@@ -2073,23 +2077,154 @@ const scrollToPosition = (position) => {
 .statistics-item {
   display: flex;
   justify-content: space-between;
+  font-size: 12px;
+}
+
+/* 分类切换 */
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.category-tab {
+  padding: 7px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
   font-size: 13px;
+  transition: all 0.2s;
 }
 
-.statistics-label {
-  color: #666;
+/* 权限卡片容器 */
+.permission-cards {
+  position: relative;
+  margin-bottom: 15px;
+  height: 420px;
 }
 
-.statistics-value {
-  color: #4361ee;
+/* 权限卡片 */
+.permission-card {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 8px;
+  background-color: #fff;
+}
+
+.permission-checkbox {
+  margin-right: 10px;
+  margin-top: 3px;
+}
+
+.permission-content {
+  flex: 1;
+}
+
+.permission-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.permission-name {
+  font-weight: bold;
+  color: #333;
+  font-size: 15px;
+}
+
+.permission-tag {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #fff;
   font-weight: bold;
 }
 
-/* 权限卡片区域高度调整 */
-.permission-cards {
-  position: relative;
-  margin-bottom: 20px;
-  height: 400px; /* 右侧高度调整 */
+.permission-body {
+  margin-bottom: 8px;
+}
+
+.permission-code {
+  display: inline-block;
+  background-color: #f5f5f5;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 5px;
+  font-family: monospace;
+  border: 1px solid #eee;
+}
+
+.permission-desc {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 5px;
+  display: block;
+  line-height: 1.4;
+}
+
+.permission-path {
+  font-size: 12px;
+  color: #999;
+  display: block;
+  background-color: #f9f9f9;
+  padding: 3px 6px;
+  border-radius: 4px;
+  margin-top: 3px;
+}
+
+.permission-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #999;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #eee;
+}
+
+/* 底部保存按钮区域 */
+.assign-footer {
+  margin-top: 15px;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+/* 选择角色区域 */
+.selection-wrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  background-color: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* 提示信息区域 */
+.tips-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  background-color: #e6f7ff;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 4px solid #1890ff;
+}
+
+.tips-text {
+  font-size: 13px;
+  color: #555;
+  margin-left: 8px;
 }
 
 /* 适配移动端 */
@@ -2101,7 +2236,7 @@ const scrollToPosition = (position) => {
   .permission-assign-sidebar {
     width: 100%;
     height: auto;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
   
   .statistics {
