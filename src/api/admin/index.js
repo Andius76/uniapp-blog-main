@@ -274,10 +274,24 @@ export const userRoleApi = {
   // 为管理员分配角色
   assignAdminRoles(adminId, roleIds) {
     console.log('分配管理员角色，管理员ID:', adminId, '角色IDs:', roleIds);
+    
+    // 构造请求对象
+    const requestData = Array.isArray(roleIds) ? { roleIds: roleIds } : roleIds;
+    
     // 使用专门的管理员角色分配接口
-    return Request.post(`/api/admin/users/roles/admin/${adminId}`, {
-      roleIds: roleIds
-    }, { withToken: true });
+    return Request.post(`/api/admin/users/roles/admin/${adminId}`, requestData, { withToken: true })
+    .catch(error => {
+      console.error('分配管理员角色失败:', error);
+      
+      // 处理403权限错误
+      if (error.statusCode === 403 || (error.response && error.response.status === 403)) {
+        console.log('权限不足，无法分配管理员角色');
+        // 这里不直接弹出提示，由页面组件处理具体的提示信息
+      }
+      
+      // 将错误传递给调用方
+      return Promise.reject(error);
+    });
   }
 };
 

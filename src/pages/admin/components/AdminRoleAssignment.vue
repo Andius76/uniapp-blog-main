@@ -125,6 +125,7 @@ import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/
 import uniLoadMore from '@/uni_modules/uni-load-more/components/uni-load-more/uni-load-more.vue';
 import uniSearchBar from '@/uni_modules/uni-search-bar/components/uni-search-bar/uni-search-bar.vue';
 import { userRoleApi, roleApi } from '@/api/admin';
+import Request from '@/utils/request.js';
 
 // 管理员列表数据
 const admins = ref([]);
@@ -269,10 +270,16 @@ const saveAdminRoles = async () => {
   loading.value = true;
   
   try {
-    console.log('保存管理员角色, 管理员ID:', currentAdmin.id, '角色IDs:', selectedRoles.value);
+    // 构造请求数据
+    const requestData = {
+      roleIds: selectedRoles.value
+    };
     
-    // 使用专门的管理员角色分配接口
-    await userRoleApi.assignAdminRoles(currentAdmin.id, selectedRoles.value);
+    console.log('保存管理员角色, 管理员ID:', currentAdmin.id, '角色IDs:', selectedRoles.value);
+    console.log('发送的数据格式:', JSON.stringify(requestData));
+    
+    // 使用专门的管理员角色分配接口，直接传递对象
+    await userRoleApi.assignAdminRoles(currentAdmin.id, requestData);
     
     // 更新本地数据
     await fetchAdmins(currentPage.value);
@@ -287,16 +294,25 @@ const saveAdminRoles = async () => {
     console.error('保存管理员角色失败:', error);
     
     // 检查错误状态码
-    if (error.statusCode === 403) {
+    if (error.response && error.response.status === 403 || error.statusCode === 403) {
+      // 优化403错误处理
       uni.showModal({
         title: '权限不足',
-        content: '您没有分配管理员角色的权限，请联系超级管理员',
-        showCancel: false
+        content: '您当前没有分配管理员角色的权限。只有超级管理员才能执行此操作，请联系系统超级管理员获取授权。',
+        confirmText: '我知道了',
+        showCancel: false,
+        success: () => {
+          // 关闭弹窗
+          closeDialog();
+        }
       });
     } else {
+      // 处理其他错误
+      const errorMsg = error.message || error.msg || '保存失败，请稍后再试';
       uni.showToast({
-        title: error.message || '保存失败',
-        icon: 'none'
+        title: errorMsg,
+        icon: 'none',
+        duration: 2000
       });
     }
   } finally {
