@@ -299,9 +299,9 @@
         :before-close="true"
         @confirm="savePermission"
         @close="closeDialog"
-        width="90%"
+        width="94%"
       >
-        <view class="dialog-form" style="max-width: 100%; padding: 10px;">
+        <view class="dialog-form">
           <view class="form-item">
             <text class="form-label">权限名称 <text style="color: #ff4d4f;">*</text></text>
             <input 
@@ -319,8 +319,8 @@
               placeholder="请输入权限标识符，如：user:add" 
               @input="validatePermissionCode"
             />
-            <text style="font-size: 12px; color: #999; margin-top: 3px; display: block; word-break: break-word;">唯一标识符，用于系统识别权限，建议采用"资源:操作"格式，如：user:view, article:edit</text>
-            <text v-if="codeError" style="font-size: 12px; color: #ff4d4f; margin-top: 3px; display: block;">{{ codeError }}</text>
+            <text class="form-tip">唯一标识符，用于系统识别权限，建议采用"资源:操作"格式，如：user:view, article:edit</text>
+            <text v-if="codeError" class="form-error">{{ codeError }}</text>
           </view>
           
           <view class="form-item">
@@ -330,7 +330,7 @@
               v-model="currentPermission.path"
               placeholder="请输入权限路径，如：/api/admin/users" 
             />
-            <text style="font-size: 12px; color: #999; margin-top: 3px; display: block;">API访问路径，用于后端权限控制，可选填</text>
+            <text class="form-tip">API访问路径，用于后端权限控制，可选填</text>
           </view>
           
           <view class="form-item">
@@ -1581,27 +1581,29 @@ const scrollToPosition = (position) => {
 }
 
 .dialog-form {
-  padding: 10px 0;
+  padding: 5px 10px;
   box-sizing: border-box;
   overflow: hidden;
+  width: 100%;
 }
 
 .form-item {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .form-label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   font-size: 14px;
   color: #333;
+  font-weight: 500;
 }
 
 .form-input {
   width: 100%;
-  height: 40px;
+  height: 38px;
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 0 10px;
@@ -1611,12 +1613,55 @@ const scrollToPosition = (position) => {
 
 .form-textarea {
   width: 100%;
-  height: 80px;
+  height: 70px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  padding: 10px;
+  padding: 8px 10px;
   font-size: 14px;
   box-sizing: border-box;
+}
+
+.form-tip {
+  font-size: 12px; 
+  color: #999; 
+  margin-top: 3px; 
+  display: block; 
+  word-break: break-word;
+}
+
+.form-error {
+  font-size: 12px; 
+  color: #ff4d4f; 
+  margin-top: 3px; 
+  display: block;
+}
+
+/* uni-popup覆盖样式 */
+::v-deep .uni-popup .uni-popup__wrapper {
+  width: 94% !important;
+  max-width: 600px;
+}
+
+::v-deep .uni-popup-dialog {
+  padding: 15px;
+  border-radius: 8px;
+}
+
+::v-deep .uni-dialog-title {
+  padding-bottom: 10px;
+}
+
+::v-deep .uni-dialog-content {
+  padding: 0;
+}
+
+::v-deep .uni-dialog-button-group {
+  border-top-color: #eee;
+  padding: 8px 0;
+}
+
+::v-deep .uni-dialog-button {
+  font-size: 14px;
 }
 
 /* 权限分配相关样式 */
