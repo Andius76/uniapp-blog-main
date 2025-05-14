@@ -177,10 +177,12 @@ const fetchAdmins = async (page = 1) => {
   currentPage.value = page;
   
   try {
-    const res = await userRoleApi.getAdminList({
+    // 使用标准的用户列表接口，添加管理员筛选参数
+    const res = await userRoleApi.getUserList({
       page: page,
       size: pageSize.value,
-      keyword: searchKeyword.value
+      keyword: searchKeyword.value,
+      isAdmin: true // 添加管理员筛选参数
     });
     
     // 修正数据获取方式，匹配后端返回的数据结构
@@ -236,11 +238,21 @@ const assignRole = async (admin) => {
   
   // 获取管理员当前角色
   try {
-    const res = await userRoleApi.getAdminRoles(admin.id);
+    console.log('获取管理员角色, 管理员ID:', admin.id);
+    // 使用用户角色接口获取角色信息
+    const res = await userRoleApi.getUserRoles(admin.id);
+    console.log('获取管理员角色成功:', res);
     selectedRoles.value = res.data ? res.data.map(role => role.id) : [];
   } catch (error) {
     console.error('获取管理员角色失败:', error);
+    // 回退到使用页面已有的角色数据
     selectedRoles.value = admin.roles ? admin.roles.map(role => role.id) : [];
+    
+    // 显示错误信息
+    uni.showToast({
+      title: '获取角色信息失败，已使用本地数据',
+      icon: 'none'
+    });
   }
   
   // 打开弹窗
@@ -258,7 +270,15 @@ const saveAdminRoles = async () => {
   loading.value = true;
   
   try {
-    await userRoleApi.assignAdminRoles(currentAdmin.id, selectedRoles.value);
+    console.log('保存管理员角色, 管理员ID:', currentAdmin.id, '角色IDs:', selectedRoles.value);
+    
+    // 修改为使用符合后端要求的数据格式
+    const roleData = { 
+      roleIds: selectedRoles.value 
+    };
+    
+    // 使用用户角色接口保存角色分配
+    await userRoleApi.assignUserRoles(currentAdmin.id, roleData);
     
     // 更新本地数据
     await fetchAdmins(currentPage.value);
@@ -271,10 +291,20 @@ const saveAdminRoles = async () => {
     closeDialog();
   } catch (error) {
     console.error('保存管理员角色失败:', error);
-    uni.showToast({
-      title: error.message || '保存失败',
-      icon: 'none'
-    });
+    
+    // 检查权限问题
+    if (error.statusCode === 403) {
+      uni.showModal({
+        title: '权限不足',
+        content: '您没有分配管理员角色的权限，请联系超级管理员',
+        showCancel: false
+      });
+    } else {
+      uni.showToast({
+        title: error.message || '保存失败',
+        icon: 'none'
+      });
+    }
   } finally {
     loading.value = false;
   }

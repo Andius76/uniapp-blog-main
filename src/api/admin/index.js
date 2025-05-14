@@ -259,6 +259,25 @@ export const userRoleApi = {
     return Request.post(`/api/admin/users/roles/${userId}`, {
       roleIds
     }, { withToken: true });
+  },
+  
+  // 获取管理员列表（带角色信息）
+  getAdminList(params) {
+    return Request.get('/api/admin/users/roles/admin', { params }, { withToken: true });
+  },
+  
+  // 获取管理员拥有的角色
+  getAdminRoles(adminId) {
+    return Request.get(`/api/admin/users/roles/admin/${adminId}`, {}, { withToken: true });
+  },
+  
+  // 为管理员分配角色
+  assignAdminRoles(adminId, roleIds) {
+    console.log('分配管理员角色，管理员ID:', adminId, '角色IDs:', roleIds);
+    // 使用标准的用户角色分配接口，包装数据为对象格式
+    return Request.post(`/api/admin/users/roles/${adminId}`, {
+      roleIds: roleIds
+    }, { withToken: true });
   }
 };
 

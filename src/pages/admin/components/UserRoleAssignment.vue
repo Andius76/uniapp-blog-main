@@ -269,7 +269,13 @@ const saveUserRoles = async () => {
   
   try {
     console.log('保存用户角色, 用户ID:', currentUser.id, '角色IDs:', selectedRoles.value);
-    await userRoleApi.assignUserRoles(currentUser.id, selectedRoles.value);
+    
+    // 修改为包装成符合后端要求的数据格式
+    const roleData = { 
+      roleIds: selectedRoles.value 
+    };
+    
+    await userRoleApi.assignUserRoles(currentUser.id, roleData);
     
     // 更新本地数据
     await fetchUsers(currentPage.value);
