@@ -427,16 +427,28 @@ const getStatusClass = (status) => {
   }
 };
 
-// 格式化HTML内容，移除HTML标签
+// 格式化HTML内容，移除HTML标签但保留换行
 const formatHtmlContent = (html) => {
   if (!html) return '';
-  // 使用正则表达式移除所有HTML标签
-  return html.replace(/<[^>]*>/g, '')
+  // 先把<br>、<p>等标签转换为换行符
+  let text = html
+    .replace(/<br\s*\/?>/gi, '\n')  // 将<br>标签转换为换行符
+    .replace(/<\/p>\s*<p>/gi, '\n\n')  // 段落间添加两个换行
+    .replace(/<\/div>\s*<div>/gi, '\n')  // div间添加换行
+    .replace(/<\/h[1-6]>\s*</gi, '\n\n<')  // 标题后添加两个换行
+    .replace(/<\/li>\s*<li>/gi, '\n')  // 列表项间添加换行
+    // 然后移除其他HTML标签
+    .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"');
+  
+  // 处理连续的换行，最多保留两个
+  text = text.replace(/\n{3,}/g, '\n\n');
+  
+  return text;
 };
 
 // 获取文章列表
@@ -1255,59 +1267,101 @@ onMounted(() => {
   width: 100%;
   max-height: 70vh;
   overflow-y: auto;
-  padding: 0 10px;
+  padding: 0 15px;
+}
+
+/* 添加自定义样式覆盖uni-popup-dialog组件默认样式 */
+/deep/ .uni-popup .uni-popup__wrapper {
+  width: 90% !important;
+  max-width: 800px !important;
+}
+
+/deep/ .uni-popup .uni-popup__wrapper .uni-popup__wrapper-box {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/deep/ .uni-popup-dialog {
+  width: 100% !important;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/deep/ .uni-dialog-title {
+  line-height: 1.5;
+  padding: 15px 15px 5px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/deep/ .uni-dialog-content {
+  padding: 15px !important;
+}
+
+/deep/ .uni-dialog-content-text {
+  font-size: 14px !important;
+  color: #333 !important;
+}
+
+/deep/ .uni-dialog-button-group {
+  border-top: 1px solid #f0f0f0;
 }
 
 .preview-header {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 15px;
 }
 
 .preview-cover {
   width: 100%;
-  height: 160px;
-  border-radius: 6px;
+  height: 200px;
+  border-radius: 8px;
   object-fit: cover;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .preview-meta {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .preview-author, .preview-time, .preview-stats {
-  font-size: 13px;
+  font-size: 14px;
   color: #666;
 }
 
 .preview-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 15px;
 }
 
 .preview-status {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   align-items: center;
 }
 
 .status-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #666;
   margin-right: 5px;
 }
 
 /* 标签样式 */
 .preview-tags {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   align-items: flex-start;
 }
 
 .tags-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #666;
   margin-right: 5px;
 }
@@ -1315,56 +1369,61 @@ onMounted(() => {
 .tags-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 8px;
 }
 
 .tag-item {
   font-size: 12px;
-  padding: 2px 6px;
+  padding: 3px 10px;
   background-color: #f0f2f5;
   color: #5c6b77;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .preview-content {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .content-block {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   border: 1px solid #f0f0f0;
-  border-radius: 6px;
-  padding: 15px;
+  border-radius: 8px;
+  padding: 20px;
   background-color: #fafafa;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .content-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: #333;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 
 .content-summary {
-  font-size: 13px;
+  font-size: 14px;
   color: #666;
-  line-height: 1.5;
+  line-height: 1.6;
   display: block;
 }
 
 .content-scroll {
-  max-height: 300px;
-  margin-top: 5px;
+  max-height: 350px;
+  margin-top: 10px;
   width: 100%;
   overflow-y: auto;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  padding: 10px;
+  background-color: #fff;
 }
 
 .content-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #333;
-  line-height: 1.6;
-  white-space: pre-wrap;
+  line-height: 1.7;
+  white-space: pre-wrap;  /* 保留换行符和空格 */
   word-break: break-word;
   width: 100%;
   display: block;
@@ -1373,26 +1432,33 @@ onMounted(() => {
 
 .preview-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 15px;
+  margin-top: 20px;
   justify-content: flex-end;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 15px;
 }
 
 /* 优化后的按钮样式 */
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
   justify-content: flex-end;
 }
 
 .action-btn {
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 6px 16px;
+  font-size: 14px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn:active {
+  transform: translateY(2px);
 }
 
 @keyframes fadeIn {
