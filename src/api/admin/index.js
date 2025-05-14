@@ -274,8 +274,8 @@ export const userRoleApi = {
   // 为管理员分配角色
   assignAdminRoles(adminId, roleIds) {
     console.log('分配管理员角色，管理员ID:', adminId, '角色IDs:', roleIds);
-    // 使用标准的用户角色分配接口，包装数据为对象格式
-    return Request.post(`/api/admin/users/roles/${adminId}`, {
+    // 使用专门的管理员角色分配接口
+    return Request.post(`/api/admin/users/roles/admin/${adminId}`, {
       roleIds: roleIds
     }, { withToken: true });
   }

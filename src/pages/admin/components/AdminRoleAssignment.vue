@@ -177,12 +177,11 @@ const fetchAdmins = async (page = 1) => {
   currentPage.value = page;
   
   try {
-    // 使用标准的用户列表接口，添加管理员筛选参数
-    const res = await userRoleApi.getUserList({
+    // 使用专门的管理员列表接口
+    const res = await userRoleApi.getAdminList({
       page: page,
       size: pageSize.value,
-      keyword: searchKeyword.value,
-      isAdmin: true // 添加管理员筛选参数
+      keyword: searchKeyword.value
     });
     
     // 修正数据获取方式，匹配后端返回的数据结构
@@ -239,8 +238,8 @@ const assignRole = async (admin) => {
   // 获取管理员当前角色
   try {
     console.log('获取管理员角色, 管理员ID:', admin.id);
-    // 使用用户角色接口获取角色信息
-    const res = await userRoleApi.getUserRoles(admin.id);
+    // 使用专门的管理员角色接口
+    const res = await userRoleApi.getAdminRoles(admin.id);
     console.log('获取管理员角色成功:', res);
     selectedRoles.value = res.data ? res.data.map(role => role.id) : [];
   } catch (error) {
@@ -272,13 +271,8 @@ const saveAdminRoles = async () => {
   try {
     console.log('保存管理员角色, 管理员ID:', currentAdmin.id, '角色IDs:', selectedRoles.value);
     
-    // 修改为使用符合后端要求的数据格式
-    const roleData = { 
-      roleIds: selectedRoles.value 
-    };
-    
-    // 使用用户角色接口保存角色分配
-    await userRoleApi.assignUserRoles(currentAdmin.id, roleData);
+    // 使用专门的管理员角色分配接口
+    await userRoleApi.assignAdminRoles(currentAdmin.id, selectedRoles.value);
     
     // 更新本地数据
     await fetchAdmins(currentPage.value);
@@ -292,7 +286,7 @@ const saveAdminRoles = async () => {
   } catch (error) {
     console.error('保存管理员角色失败:', error);
     
-    // 检查权限问题
+    // 检查错误状态码
     if (error.statusCode === 403) {
       uni.showModal({
         title: '权限不足',
