@@ -45,10 +45,10 @@
 			"treeShaking": {
 				"enable": true
 			}
-	},
+		},
 		"template": "index.html",
 		"devServer": {
-			"port": 8080,
+			"port": 5174,
 			"disableHostCheck": true,
 			"proxy": {
 				"/api": {
