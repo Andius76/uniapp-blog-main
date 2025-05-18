@@ -24,7 +24,11 @@
 		"backgroundColor": "#F8F8F8",
 		"h5": {
 			"navigationBarTitleText": "博客管理系统",
-			"navigationStyle": "default"
+			"navigationStyle": "default",
+			"router": {
+				"mode": "hash",
+				"base": "/"
+			}
 		}
 	},
 	"condition": {

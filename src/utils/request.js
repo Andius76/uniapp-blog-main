@@ -17,7 +17,14 @@
  */
 function getBaseUrl() {
 	// 管理后台仅支持H5平台
-	return 'http://localhost:8080';
+	// 根据当前环境判断使用哪个基础URL
+	if (process.env.NODE_ENV === 'development') {
+		// 开发环境
+		return 'https://andiusblog.xyz';
+	} else {
+		// 生产环境 - 使用相对路径，依赖Nginx代理转发
+		return 'https://andiusblog.xyz';
+	}
 }
 
 /**

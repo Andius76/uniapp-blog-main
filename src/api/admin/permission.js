@@ -1,9 +1,9 @@
-import http from '@/utils/request.js';
+import request from '@/utils/request.js';
 
 /**
  * 权限管理相关API
  */
-export default {
+const permissionApi = {
   /**
    * 获取权限列表 (复数形式)
    * @param {Object} params 查询参数
@@ -24,7 +24,7 @@ export default {
     
     // 添加错误重试和诊断
     return new Promise((resolve, reject) => {
-      http.get('/api/admin/permissions', validParams, { withToken: true })
+      request.get('/api/admin/permissions', { params: validParams })
         .then(response => {
           console.log('权限列表请求成功:', response);
           resolve(response);
@@ -35,7 +35,7 @@ export default {
           // 如果是分页参数导致的错误，尝试用默认值重试一次
           if (error.message && error.message.includes('page') && params.size > 10) {
             console.log('尝试使用默认分页参数重试请求');
-            http.get('/api/admin/permissions', { page: 1, size: 10 }, { withToken: true })
+            request.get('/api/admin/permissions', { params: { page: 1, size: 10 } })
               .then(response => {
                 console.log('使用默认参数重试成功:', response);
                 resolve(response);
@@ -58,7 +58,7 @@ export default {
    */
   getPermissionDetail(id) {
     // 直接使用复数形式
-    return http.get(`/api/admin/permissions/${id}`, {}, { withToken: true });
+    return request.get(`/api/admin/permissions/${id}`);
   },
   
   /**
@@ -72,7 +72,7 @@ export default {
    */
   addPermission(data) {
     // 直接使用复数形式
-    return http.post('/api/admin/permissions', data, { withToken: true });
+    return request.post('/api/admin/permissions', data);
   },
   
   /**
@@ -87,7 +87,7 @@ export default {
    */
   updatePermission(id, data) {
     // 直接使用复数形式
-    return http.put(`/api/admin/permissions/${id}`, data, { withToken: true });
+    return request.put(`/api/admin/permissions/${id}`, data);
   },
   
   /**
@@ -97,7 +97,7 @@ export default {
    */
   deletePermission(id) {
     // 直接使用复数形式
-    return http.delete(`/api/admin/permissions/${id}`, {}, { withToken: true });
+    return request.delete(`/api/admin/permissions/${id}`);
   },
   
   /**
@@ -106,7 +106,7 @@ export default {
    */
   getAllPermissions() {
     // 直接使用复数形式
-    return http.get('/api/admin/permissions/all', {}, { withToken: true });
+    return request.get('/api/admin/permissions/all');
   },
   
   /**
@@ -116,6 +116,8 @@ export default {
    */
   getRolePermissions(roleId) {
     // 使用标准角色权限路径
-    return http.get(`/api/admin/roles/${roleId}/permissions`, {}, { withToken: true });
+    return request.get(`/api/admin/roles/${roleId}/permissions`);
   }
-} 
+};
+
+export default permissionApi; 

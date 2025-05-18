@@ -1,4 +1,4 @@
-import http from '@/utils/request.js';
+import request from '@/utils/request.js';
 
 /**
  * 角色-权限关系管理API
@@ -11,7 +11,7 @@ export default {
    */
   getRolePermissions(roleId) {
     console.log('获取角色权限，角色ID:', roleId);
-    return http.get(`/api/admin/roles/${roleId}/permissions`, {}, { withToken: true });
+    return request.get(`/api/admin/roles/${roleId}/permissions`);
   },
   
   /**
@@ -22,6 +22,6 @@ export default {
    */
   assignPermissions(roleId, permissionIds) {
     console.log('分配角色权限，角色ID:', roleId, '权限IDs:', permissionIds);
-    return http.post(`/api/admin/roles/${roleId}/permissions`, { permissionIds }, { withToken: true });
+    return request.post(`/api/admin/roles/${roleId}/permissions`, { permissionIds });
   }
 } 

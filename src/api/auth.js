@@ -14,7 +14,7 @@
  */
 
 // 导入请求工具
-import http from '@/utils/request.js';
+import request from '@/utils/request.js';
 
 /**
  * 发送邮箱验证码
@@ -24,7 +24,7 @@ import http from '@/utils/request.js';
 export const sendVerificationCode = (params) => {
   // 确保从params中获取email字符串
   const email = typeof params === 'object' ? params.email : params;
-  return http.post(`/api/auth/send-email-code?email=${encodeURIComponent(email)}`);
+  return request.post(`/api/auth/send-email-code?email=${encodeURIComponent(email)}`);
 };
 
 /**
@@ -36,7 +36,7 @@ export const sendVerificationCode = (params) => {
  * @returns {Promise} - 返回Promise对象
  */
 export const register = (params) => {
-  return http.post('/api/auth/register', params);
+  return request.post('/api/auth/register', params);
 };
 
 /**
@@ -52,12 +52,12 @@ export function login(data) {
   // 判断是否是管理员登录
   if (data.isAdmin) {
     // 管理员登录使用username作为后端接收参数
-    return http.post('/api/admin/login', {
+    return request.post('/api/admin/login', {
       username: data.username || data.email, // 优先使用username，兼容旧调用
       password: data.password
     });
   }
-  return http.post('/api/auth/login', data);
+  return request.post('/api/auth/login', data);
 }
 
 /**
@@ -67,7 +67,7 @@ export function login(data) {
  * @returns {Promise} - 返回Promise对象
  */
 export function forgetPassword(data) {
-  return http.post('/api/auth/forget-password', data);
+  return request.post('/api/auth/forget-password', data);
 }
 
 /**
@@ -79,5 +79,5 @@ export function forgetPassword(data) {
  * @returns {Promise} - 返回Promise对象
  */
 export function resetPassword(data) {
-  return http.post('/api/auth/reset-password', data);
+  return request.post('/api/auth/reset-password', data);
 }
