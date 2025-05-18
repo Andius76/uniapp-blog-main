@@ -20,7 +20,7 @@ function getBaseUrl() {
 	// 根据当前环境判断使用哪个基础URL
 	if (process.env.NODE_ENV === 'development') {
 		// 开发环境
-		return ''; // 使用相对路径，或指定开发服务器地址
+		return ''; // 使用相对路径，避免跨域问题
 	} else {
 		// 生产环境 - 使用相对路径，依赖Nginx代理转发
 		return ''; // 使用相对路径，不要指定域名
