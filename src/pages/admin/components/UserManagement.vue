@@ -33,6 +33,7 @@
         <view class="th" style="flex: 2;">用户名</view>
         <view class="th" style="flex: 3;">邮箱</view>
         <view class="th" style="flex: 2;">注册时间</view>
+        <view class="th" style="flex: 1.5;">角色</view>
         <view class="th" style="flex: 1;">状态</view>
         <view class="th" style="flex: 2;">操作</view>
       </view>
@@ -55,6 +56,17 @@
           <view class="td" style="flex: 2;">{{ user.nickname }}</view>
           <view class="td" style="flex: 3;">{{ user.email }}</view>
           <view class="td" style="flex: 2;">{{ formatDate(user.createTime) }}</view>
+          <view class="td" style="flex: 1.5;">
+            <view class="role-tags">
+              <text v-if="!user.roles || user.roles.length === 0" class="role-tag">普通用户</text>
+              <text v-else v-for="(role, i) in user.roles" :key="i" 
+                    :class="['role-tag', 
+                            (role.name === 'ADMIN' || role.name === 'admin' || role === 'ADMIN' || role === 'admin') 
+                            ? 'role-admin' : 'role-normal']">
+                {{ role.name || role }}
+              </text>
+            </view>
+          </view>
           <view class="td" style="flex: 1;">
             <text :class="['status-badge', Number(user.status) === 1 ? 'status-normal' : 'status-disabled']">
               {{ Number(user.status) === 1 ? '正常' : '禁用' }}
@@ -66,6 +78,7 @@
               class="btn btn-sm" 
               :class="Number(user.status) === 1 ? 'btn-warning' : 'btn-success'"
               @click="toggleUserStatus(user)"
+              :disabled="(isSuperAdmin(user) && Number(user.status) === 1) || (!currentUserIsSuperAdmin() && isSuperAdmin(user))"
             >
               {{ Number(user.status) === 1 ? '禁用' : '启用' }}
             </button>
@@ -117,6 +130,21 @@
           <view class="detail-item">
             <text class="detail-label">邮箱：</text>
             <text class="detail-value">{{ currentUser.email }}</text>
+          </view>
+          
+          <view class="detail-item">
+            <text class="detail-label">角色：</text>
+            <view class="detail-value">
+              <view class="role-tags detail-roles">
+                <text v-if="!currentUser.roles || currentUser.roles.length === 0" class="role-tag">普通用户</text>
+                <text v-else v-for="(role, i) in currentUser.roles" :key="i"
+                      :class="['role-tag', 
+                              (role.name === 'ADMIN' || role.name === 'admin' || role === 'ADMIN' || role === 'admin') 
+                              ? 'role-admin' : 'role-normal']">
+                  {{ role.name || role }}
+                </text>
+              </view>
+            </view>
           </view>
           
           <view class="detail-item">
@@ -201,6 +229,68 @@ const formatDate = (dateStr) => {
   }
   
   return dateStr;
+};
+
+// 获取当前管理员的信息
+const currentAdmin = ref({});
+
+// 初始化时获取当前管理员信息
+const fetchCurrentAdmin = () => {
+  try {
+    // 从本地存储获取管理员信息
+    const adminInfo = uni.getStorageSync('admin_info');
+    const adminRoles = uni.getStorageSync('admin_roles') || [];
+    
+    if (adminInfo) {
+      currentAdmin.value = typeof adminInfo === 'string' ? JSON.parse(adminInfo) : adminInfo;
+      console.log('当前管理员信息:', currentAdmin.value);
+      console.log('当前管理员角色:', adminRoles);
+    } else {
+      console.warn('未找到管理员信息');
+    }
+  } catch (error) {
+    console.error('获取管理员信息失败:', error);
+  }
+};
+
+// 检查是否是超级管理员
+const isSuperAdmin = (user) => {
+  // 检查用户对象是否有roles属性
+  if (user.roles && Array.isArray(user.roles)) {
+    return user.roles.some(role => 
+      role.name === 'ADMIN' || 
+      role.name === 'admin' || 
+      role === 'ADMIN' || 
+      role === 'admin'
+    );
+  }
+  
+  // 如果没有roles属性，检查role属性
+  if (user.role) {
+    return user.role === 'ADMIN' || user.role === 'admin';
+  }
+  
+  return false;
+};
+
+// 检查当前登录的管理员是否是超级管理员
+const currentUserIsSuperAdmin = () => {
+  const adminRoles = uni.getStorageSync('admin_roles') || [];
+  
+  // 检查角色数组
+  if (Array.isArray(adminRoles)) {
+    return adminRoles.some(role => 
+      (typeof role === 'string' && (role === 'ADMIN' || role === 'admin')) ||
+      (typeof role === 'object' && role.name && (role.name === 'ADMIN' || role.name === 'admin'))
+    );
+  }
+  
+  // 如果currentAdmin有role属性
+  if (currentAdmin.value && currentAdmin.value.role) {
+    return currentAdmin.value.role === 'ADMIN' || currentAdmin.value.role === 'admin';
+  }
+  
+  return false;
 };
 
 // 获取用户列表
@@ -295,6 +385,25 @@ const viewUserDetail = async (user) => {
     const res = await userApi.getUserDetail(user.id);
     if (res && res.data) {
       currentUser.value = res.data;
+      
+      // 如果用户详情中没有角色信息，尝试获取用户角色
+      if (!currentUser.value.roles) {
+        try {
+          // 调用获取用户角色的API
+          const rolesRes = await fetch(`/api/admin/users/${user.id}/roles`, {
+            headers: {
+              'Authorization': `Bearer ${uni.getStorageSync('admin_token')}`
+            }
+          }).then(res => res.json());
+          
+          if (rolesRes && rolesRes.code === 200 && rolesRes.data) {
+            currentUser.value.roles = rolesRes.data;
+            console.log('获取到用户角色:', rolesRes.data);
+          }
+        } catch (roleError) {
+          console.error('获取用户角色失败:', roleError);
+        }
+      }
     }
   } catch (error) {
     console.error('获取用户详情失败:', error);
@@ -312,6 +421,30 @@ const closeDetailDialog = () => {
 const toggleUserStatus = async (user) => {
   console.log('切换用户状态:', user);
   
+  // 检查是否是超级管理员账号
+  const isUserSuperAdmin = isSuperAdmin(user);
+  
+  // 检查当前管理员是否是超级管理员
+  const isCurrentSuperAdmin = currentUserIsSuperAdmin();
+  
+  // 规则1：超级管理员账号不能被禁用
+  if (isUserSuperAdmin && Number(user.status) === 1) {
+    uni.showToast({
+      title: '超级管理员账号不能被禁用',
+      icon: 'none'
+    });
+    return;
+  }
+  
+  // 规则2：只有超级管理员可以禁用其他管理员
+  if (!isCurrentSuperAdmin && isUserSuperAdmin) {
+    uni.showToast({
+      title: '您没有权限操作超级管理员账号',
+      icon: 'none'
+    });
+    return;
+  }
+
   // 切换状态值：1 -> 0 或 0 -> 1
   const newStatus = Number(user.status) === 1 ? 0 : 1;
   
@@ -343,6 +476,9 @@ const toggleUserStatus = async (user) => {
 // 初始化
 onMounted(() => {
   console.log('UserManagement组件已挂载，开始获取用户列表');
+  // 获取当前管理员信息
+  fetchCurrentAdmin();
+  
   setTimeout(() => {
     // 延迟100ms执行，确保组件完全渲染
     fetchUsers();
@@ -676,5 +812,41 @@ onMounted(() => {
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.role-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.role-tag {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 11px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+  color: #666;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-admin {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  border-color: #91d5ff;
+}
+
+.role-normal {
+  background-color: #f9f0ff;
+  color: #722ed1;
+  border-color: #d3adf7;
+}
+
+.detail-roles {
+  margin-top: 5px;
 }
 </style> 

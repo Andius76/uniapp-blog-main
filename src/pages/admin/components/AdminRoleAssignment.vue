@@ -54,7 +54,15 @@
             </view>
           </view>
           <view class="td actions" style="flex: 2;">
-            <button class="btn btn-sm btn-primary" @click="assignRole(admin)">分配角色</button>
+            <button 
+              class="btn btn-sm" 
+              :class="isSuperAdmin(admin) ? 'btn-disabled' : 'btn-primary'"
+              @click="assignRole(admin)"
+              :disabled="isSuperAdmin(admin)"
+              :title="isSuperAdmin(admin) ? '超级管理员角色不可修改' : '分配角色'"
+            >
+              {{ isSuperAdmin(admin) ? '超管不可修改' : '分配角色' }}
+            </button>
           </view>
         </view>
       </view>
@@ -231,8 +239,36 @@ const resetSearch = () => {
   fetchAdmins(1);
 };
 
+// 检查用户是否是超级管理员
+const isSuperAdmin = (admin) => {
+  // 检查是否是内置的超级管理员账号
+  const isDefaultAdmin = admin.username === 'admin' || admin.email === 'admin';
+  
+  // 检查用户角色是否包含超级管理员角色
+  const hasAdminRole = admin.roles && admin.roles.some(role => 
+    role.name === 'ADMIN' || 
+    role.name === 'admin' || 
+    role.name === '超级管理员' ||
+    (typeof role === 'string' && (role === 'ADMIN' || role === 'admin'))
+  );
+  
+  return isDefaultAdmin || hasAdminRole;
+};
+
 // 分配角色
 const assignRole = async (admin) => {
+  // 检查是否是超级管理员
+  if (isSuperAdmin(admin)) {
+    // 显示提示，超级管理员不能被修改角色
+    uni.showModal({
+      title: '操作限制',
+      content: '系统超级管理员的角色不可修改，这是为了确保系统安全。',
+      confirmText: '我知道了',
+      showCancel: false
+    });
+    return;
+  }
+  
   // 复制管理员数据
   Object.assign(currentAdmin, { ...admin });
   
@@ -476,6 +512,19 @@ onMounted(() => {
   padding: 4px 8px;
   font-size: 12px;
   margin-left: 0;
+}
+
+.btn-disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  border-color: #ddd;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .dialog-form {
